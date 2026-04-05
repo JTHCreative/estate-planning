@@ -43,7 +43,12 @@ export function useAuth() {
 }
 
 async function profileToUser(profile: UserProfile): Promise<User> {
-  const partner = await getPartnerProfile(profile);
+  let partner = null;
+  try {
+    partner = await getPartnerProfile(profile);
+  } catch {
+    // Partner profile may not be accessible yet
+  }
   return {
     id: profile.uid,
     email: profile.email,
@@ -62,9 +67,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshUser = async () => {
     const fbUser = auth.currentUser;
     if (!fbUser) { setUser(null); return; }
-    const profile = await getUserProfile(fbUser.uid);
-    if (profile) {
-      setUser(await profileToUser(profile));
+    try {
+      const profile = await getUserProfile(fbUser.uid);
+      if (profile) {
+        setUser(await profileToUser(profile));
+      }
+    } catch (err) {
+      console.error('refreshUser error:', err);
     }
   };
 
@@ -75,6 +84,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const profile = await getUserProfile(fbUser.uid);
           if (profile) {
             setUser(await profileToUser(profile));
+          } else {
+            // Auth exists but no Firestore profile yet (race condition on register)
+            setUser(null);
           }
         } else {
           setUser(null);
@@ -93,14 +105,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     const cred = await signInWithEmailAndPassword(auth, email, password);
-    const profile = await getUserProfile(cred.user.uid);
-    if (profile) setUser(await profileToUser(profile));
+    try {
+      const profile = await getUserProfile(cred.user.uid);
+      if (profile) {
+        setUser(await profileToUser(profile));
+      }
+    } catch (err) {
+      console.error('Login profile fetch error:', err);
+      // Still set a minimal user so we don't get stuck on loading
+      setUser({
+        id: cred.user.uid,
+        email: cred.user.email || '',
+        firstName: '',
+        lastName: '',
+        partnerCode: '',
+        partnerId: null,
+      });
+    }
+    setLoading(false);
   };
 
   const register = async (email: string, password: string, firstName: string, lastName: string) => {
     const cred = await createUserWithEmailAndPassword(auth, email, password);
     const profile = await createUserProfile(cred.user.uid, email, firstName, lastName);
     setUser(await profileToUser(profile));
+    setLoading(false);
   };
 
   const logout = () => {
