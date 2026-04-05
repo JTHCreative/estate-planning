@@ -10,6 +10,7 @@ import { auth } from '../lib/firebase';
 import {
   createUserProfile, getUserProfile, getPartnerProfile,
   linkPartner as linkPartnerFn, unlinkPartner as unlinkPartnerFn,
+  updateUserProfile,
 } from '../lib/storage';
 import type { UserProfile } from '../lib/storage';
 
@@ -20,7 +21,8 @@ export interface User {
   lastName: string;
   partnerCode: string;
   partnerId: string | null;
-  partner?: { id: string; email: string; firstName: string; lastName: string } | null;
+  photoURL: string | null;
+  partner?: { id: string; email: string; firstName: string; lastName: string; photoURL: string | null } | null;
 }
 
 interface AuthContextType {
@@ -31,6 +33,7 @@ interface AuthContextType {
   refreshUser: () => Promise<void>;
   doLinkPartner: (partnerCode: string) => Promise<void>;
   doUnlinkPartner: () => Promise<void>;
+  updatePhoto: (photoURL: string | null) => Promise<void>;
   loading: boolean;
 }
 
@@ -56,7 +59,8 @@ async function profileToUser(profile: UserProfile): Promise<User> {
     lastName: profile.lastName,
     partnerCode: profile.partnerCode,
     partnerId: profile.partnerId,
-    partner: partner ? { id: partner.uid, email: partner.email, firstName: partner.firstName, lastName: partner.lastName } : null,
+    photoURL: profile.photoURL || null,
+    partner: partner ? { id: partner.uid, email: partner.email, firstName: partner.firstName, lastName: partner.lastName, photoURL: partner.photoURL || null } : null,
   };
 }
 
@@ -113,6 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             lastName: '',
             partnerCode: '',
             partnerId: null,
+            photoURL: null,
           });
         } else {
           setUser(null);
@@ -149,6 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         lastName: '',
         partnerCode: '',
         partnerId: null,
+        photoURL: null,
       });
     }
     setLoading(false);
@@ -178,8 +184,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await refreshUser();
   };
 
+  const updatePhoto = async (photoURL: string | null) => {
+    if (!user) return;
+    await updateUserProfile(user.id, { photoURL });
+    setUser(prev => prev ? { ...prev, photoURL } : prev);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, refreshUser, doLinkPartner, doUnlinkPartner, loading }}>
+    <AuthContext.Provider value={{ user, login, register, logout, refreshUser, doLinkPartner, doUnlinkPartner, updatePhoto, loading }}>
       {children}
     </AuthContext.Provider>
   );

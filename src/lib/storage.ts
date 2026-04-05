@@ -13,6 +13,7 @@ export interface UserProfile {
   lastName: string;
   partnerCode: string;
   partnerId: string | null;
+  photoURL: string | null;
 }
 
 export interface Institution {
@@ -50,9 +51,13 @@ export interface Account {
 
 export async function createUserProfile(uid: string, email: string, firstName: string, lastName: string): Promise<UserProfile> {
   const partnerCode = crypto.randomUUID().slice(0, 8).toUpperCase();
-  const profile: UserProfile = { uid, email: email.toLowerCase(), firstName, lastName, partnerCode, partnerId: null };
+  const profile: UserProfile = { uid, email: email.toLowerCase(), firstName, lastName, partnerCode, partnerId: null, photoURL: null };
   await setDoc(doc(db, 'users', uid), profile);
   return profile;
+}
+
+export async function updateUserProfile(uid: string, updates: Partial<UserProfile>): Promise<void> {
+  await updateDoc(doc(db, 'users', uid), updates);
 }
 
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
