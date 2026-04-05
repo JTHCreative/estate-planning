@@ -7,7 +7,24 @@ import {
   addAccount, updateAccount, deleteAccount,
 } from '../lib/storage';
 import type { Institution, Account } from '../lib/storage';
-import { Plus, ArrowLeft, Trash2, Edit3, ChevronDown, ChevronRight, Eye, EyeOff, X } from 'lucide-react';
+import { Plus, ArrowLeft, Trash2, Edit3, ChevronDown, ChevronRight, Eye, EyeOff, X,
+  Landmark, Building2, Banknote, CreditCard, Wallet, PiggyBank, CircleDollarSign,
+  Shield, Heart, Car, Truck, Bike, Ship, Caravan, Sailboat, Waves,
+  Home, Building, TreePine, MapPin, Hotel, Castle,
+  Briefcase, Store, Users, Handshake, Scale,
+  Bitcoin, HardDrive, Globe, Image,
+  GraduationCap, BookOpen, School,
+  FileText, FileLock, FileCheck, FileSignature, FileHeart, ClipboardList,
+  Calculator, FileSpreadsheet,
+  Gem, Palette, Trophy, Guitar, Monitor, Armchair, Wine, Medal,
+  Tv, Music, ShoppingBag, Film, Cloud, Pen, Dumbbell, Newspaper, MoreHorizontal,
+  Mail, AtSign, Camera, Video, Database, Apple, Smartphone,
+  Zap, Flame, Droplets, Wifi, Phone, Lock, Scissors,
+  Stethoscope, Smile, Glasses, Pill, Cross, HeartPulse, Activity,
+  DollarSign, HandCoins, Gavel, UserCheck, UserPlus, Contact,
+  Church, Leaf, Ribbon,
+  type LucideIcon,
+} from 'lucide-react';
 
 type InstitutionWithOwner = Institution & { ownerName: string };
 type AccountWithOwner = Account & { ownerName: string };
@@ -322,6 +339,103 @@ const institutionPresets: Record<string, string[]> = {
   'final-wishes': ['Funeral Home', 'Cemetery', 'Crematorium', 'Church / Place of Worship', 'Organ Donation Registry', 'Pre-paid Burial Plan', 'Other'],
 };
 
+const presetIcons: Record<string, LucideIcon> = {
+  // Banks
+  'Chase': Landmark, 'Bank of America': Building2, 'Wells Fargo': Banknote, 'Citibank': CreditCard,
+  'US Bank': Landmark, 'Capital One': CreditCard, 'PNC Bank': Landmark, 'TD Bank': Building2,
+  'Ally Bank': Wallet, 'Marcus by Goldman Sachs': CircleDollarSign, 'Discover Bank': CreditCard,
+  'Navy Federal': Shield, 'USAA': Shield, 'Charles Schwab': CircleDollarSign, 'Local Credit Union': Users,
+  // Investments
+  'Fidelity': CircleDollarSign, 'Vanguard': CircleDollarSign, 'TD Ameritrade': CircleDollarSign,
+  'E*TRADE': CircleDollarSign, 'Merrill Lynch': Building2, 'Morgan Stanley': Building2,
+  'Edward Jones': Briefcase, 'Robinhood': Leaf, 'Wealthfront': CircleDollarSign,
+  'Betterment': CircleDollarSign, 'Interactive Brokers': CircleDollarSign,
+  // Retirement
+  'TIAA': PiggyBank, 'T. Rowe Price': PiggyBank, 'Empower': PiggyBank,
+  'Principal': PiggyBank, 'John Hancock': PiggyBank, 'ADP Retirement': PiggyBank,
+  // Insurance
+  'State Farm': Shield, 'Allstate': Shield, 'GEICO': Shield, 'Progressive': Shield,
+  'Liberty Mutual': Shield, 'Farmers': Shield, 'Nationwide': Shield,
+  'MetLife': Shield, 'Prudential': Shield, 'New York Life': Heart,
+  'Northwestern Mutual': Shield, 'Aflac': HeartPulse, 'Humana': HeartPulse,
+  'UnitedHealthcare': HeartPulse, 'Blue Cross Blue Shield': HeartPulse, 'Aetna': HeartPulse,
+  // Real Estate
+  'Primary Residence': Home, 'Rental Property': Building, 'Vacation Home': Hotel,
+  'Land / Lot': TreePine, 'Commercial Property': Building2, 'Timeshare': Castle,
+  // Vehicles
+  'Car': Car, 'Truck': Truck, 'SUV': Car, 'Motorcycle': Bike, 'Boat': Ship,
+  'RV / Camper': Caravan, 'ATV / UTV': Bike, 'Jet Ski': Waves,
+  'Trailer': Caravan, 'Classic / Antique Car': Car, 'Sailboat': Sailboat,
+  // Business
+  'LLC': Briefcase, 'S-Corp': Building2, 'C-Corp': Building2,
+  'Sole Proprietorship': Store, 'Partnership': Handshake, 'Franchise': Store,
+  'Non-Profit': Heart,
+  // Digital
+  'Coinbase': Bitcoin, 'Binance': Bitcoin, 'Kraken': Bitcoin, 'Crypto.com': Bitcoin,
+  'Ledger Wallet': HardDrive, 'Trezor Wallet': HardDrive, 'MetaMask': Wallet,
+  'PayPal Crypto': Wallet, 'Domain Names': Globe, 'Digital Storefront': Store,
+  'NFT Collection': Image,
+  // Debts
+  'Mortgage': Home, 'Auto Loan': Car, 'Student Loan': GraduationCap,
+  'Credit Card': CreditCard, 'Personal Loan': Banknote, 'HELOC': Home,
+  'Medical Debt': HeartPulse, 'Business Loan': Briefcase,
+  // Estate Documents
+  'Last Will & Testament': FileText, 'Revocable Living Trust': FileLock,
+  'Power of Attorney': FileSignature, 'Healthcare Directive': FileHeart,
+  'HIPAA Authorization': FileCheck, 'Beneficiary Designations': ClipboardList,
+  'Guardianship Designation': UserCheck, 'Letter of Intent': FileText,
+  // Tax
+  'Federal Tax Return': FileSpreadsheet, 'State Tax Return': FileSpreadsheet,
+  'Business Tax Return': Calculator, 'Property Tax': Home, 'CPA / Tax Preparer': Calculator,
+  // Personal Property
+  'Jewelry': Gem, 'Fine Art': Palette, 'Collectibles': Trophy,
+  'Antiques': Armchair, 'Firearms': Shield, 'Musical Instruments': Guitar,
+  'Electronics': Monitor, 'Furniture': Armchair, 'Wine / Spirits Collection': Wine,
+  'Sports Memorabilia': Medal,
+  // Subscriptions
+  'Netflix': Tv, 'Spotify': Music, 'Amazon Prime': ShoppingBag, 'Disney+': Film,
+  'YouTube Premium': Video, 'Apple One': Apple, 'Hulu': Tv, 'HBO Max': Film,
+  'Adobe Creative Cloud': Pen, 'Microsoft 365': Cloud,
+  'Gym Membership': Dumbbell, 'Club Membership': Users,
+  'Newspaper / Magazine': Newspaper,
+  // Social Media
+  'Gmail': Mail, 'Outlook / Hotmail': Mail, 'Yahoo Mail': Mail, 'iCloud': Cloud,
+  'Facebook': Users, 'Instagram': Camera, 'X / Twitter': AtSign,
+  'LinkedIn': Briefcase, 'TikTok': Music, 'YouTube': Video,
+  'Google Drive': Database, 'Dropbox': Database, 'OneDrive': Cloud,
+  'Apple ID': Apple,
+  // Utilities
+  'Electric': Zap, 'Gas': Flame, 'Water / Sewer': Droplets,
+  'Internet': Wifi, 'Cell Phone': Smartphone, 'Home Phone': Phone,
+  'Cable / Satellite TV': Tv, 'Trash / Recycling': Trash2,
+  'HOA': Home, 'Security System': Lock, 'Lawn / Landscaping': Scissors,
+  // Healthcare
+  'Primary Doctor': Stethoscope, 'Dentist': Smile, 'Eye Doctor': Glasses,
+  'Specialist': Activity, 'Pharmacy': Pill, 'Hospital': Cross,
+  'Health Insurance': HeartPulse, 'Dental Insurance': Smile,
+  'Vision Insurance': Glasses, 'HSA Account': Wallet, 'FSA Account': Wallet,
+  'Medicare': HeartPulse,
+  // Education
+  '529 Plan': GraduationCap, 'Coverdell ESA': BookOpen,
+  'Student Loan - Federal': GraduationCap, 'Student Loan - Private': GraduationCap,
+  'Scholarship Fund': School,
+  // Trusts
+  'Irrevocable Trust': FileLock,
+  'Family LLC': Users, 'Family Foundation': Heart,
+  'Charitable Trust': Heart, 'Special Needs Trust': HeartPulse,
+  // Emergency Contacts
+  'Attorney': Gavel, 'CPA / Accountant': Calculator, 'Financial Advisor': DollarSign,
+  'Insurance Agent': Shield, 'Executor': UserCheck, 'Trustee': Scale,
+  'Guardian': UserPlus, 'Spouse / Partner': Heart, 'Family Member': Users,
+  'Close Friend': Contact, 'Neighbor': Home, 'Doctor': Stethoscope,
+  // Final Wishes
+  'Funeral Home': Building, 'Cemetery': MapPin, 'Crematorium': Flame,
+  'Church / Place of Worship': Church, 'Organ Donation Registry': Ribbon,
+  'Pre-paid Burial Plan': HandCoins,
+  // Fallback
+  'Other': MoreHorizontal,
+};
+
 // Map field keys to acctForm keys
 const fieldToFormKey: Record<string, string> = {
   accountNumber: 'accountNumber',
@@ -512,7 +626,9 @@ export default function CategoryDetail() {
               <button className="btn btn-ghost" onClick={() => setShowInstPicker(false)}><X size={18} /></button>
             </div>
             <div className="preset-grid">
-              {(institutionPresets[categoryId!] || ['Other']).map(preset => (
+              {(institutionPresets[categoryId!] || ['Other']).map(preset => {
+                const PresetIcon = presetIcons[preset] || MoreHorizontal;
+                return (
                 <button
                   key={preset}
                   className="preset-btn"
@@ -526,9 +642,11 @@ export default function CategoryDetail() {
                     setShowInstForm(true);
                   }}
                 >
-                  {preset}
+                  <PresetIcon size={24} />
+                  <span>{preset}</span>
                 </button>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

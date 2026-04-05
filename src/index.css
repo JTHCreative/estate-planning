@@ -475,21 +475,37 @@ a:hover { text-decoration: underline; }
 
 .preset-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
 }
 
 .preset-btn {
-  padding: 14px 12px;
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 8px;
   background: var(--bg-input);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 500;
+  border-radius: var(--radius);
+  color: var(--text-muted);
   cursor: pointer;
   transition: all 0.2s;
+}
+
+.preset-btn svg { flex-shrink: 0; }
+
+.preset-btn span {
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
   text-align: center;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .preset-btn:hover {
@@ -499,7 +515,7 @@ a:hover { text-decoration: underline; }
 }
 
 @media (max-width: 768px) {
-  .preset-grid { grid-template-columns: repeat(2, 1fr); }
+  .preset-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
 /* Settings */
