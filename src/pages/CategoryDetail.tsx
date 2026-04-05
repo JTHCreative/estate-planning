@@ -33,11 +33,15 @@ export default function CategoryDetail() {
     contactEmail: '', estimatedValue: '', beneficiary: '', notes: ''
   });
 
-  const load = useCallback(() => {
+  const load = useCallback(async () => {
     if (!user || !categoryId) return;
     setCategory(CATEGORIES.find(c => c.id === categoryId) || null);
-    setInstitutions(getInstitutions(user.id, categoryId));
-    setAccounts(getAccounts(user.id));
+    const [insts, accts] = await Promise.all([
+      getInstitutions(user.id, categoryId),
+      getAccounts(user.id),
+    ]);
+    setInstitutions(insts);
+    setAccounts(accts);
   }, [user, categoryId]);
 
   useEffect(() => { load(); }, [load]);
@@ -65,31 +69,31 @@ export default function CategoryDetail() {
     contactEmail: '', estimatedValue: '', beneficiary: '', notes: ''
   });
 
-  const handleAddInstitution = (e: React.FormEvent) => {
+  const handleAddInstitution = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !categoryId) return;
     if (editingInst) {
-      updateInstitution(user.id, editingInst.id, {
+      await updateInstitution(editingInst.id, {
         name: instForm.name, website: instForm.website || null,
         phone: instForm.phone || null, notes: instForm.notes || null,
       });
       setEditingInst(null);
     } else {
-      addInstitution(user.id, {
+      await addInstitution(user.id, {
         categoryId, name: instForm.name,
         website: instForm.website || null, phone: instForm.phone || null, notes: instForm.notes || null,
       });
     }
     resetInstForm();
     setShowInstForm(false);
-    load();
+    await load();
   };
 
-  const handleAddAccount = (e: React.FormEvent, institutionId: string) => {
+  const handleAddAccount = async (e: React.FormEvent, institutionId: string) => {
     e.preventDefault();
     if (!user) return;
     if (editingAcct) {
-      updateAccount(user.id, editingAcct.id, {
+      await updateAccount(editingAcct.id, {
         accountName: acctForm.accountName, accountType: acctForm.accountType || null,
         accountNumber: acctForm.accountNumber || null, routingNumber: acctForm.routingNumber || null,
         username: acctForm.username || null, passwordEncrypted: acctForm.password || null,
@@ -100,7 +104,7 @@ export default function CategoryDetail() {
       });
       setEditingAcct(null);
     } else {
-      addAccount(user.id, {
+      await addAccount(user.id, {
         institutionId, accountName: acctForm.accountName,
         accountType: acctForm.accountType || null, accountNumber: acctForm.accountNumber || null,
         routingNumber: acctForm.routingNumber || null, username: acctForm.username || null,
@@ -112,19 +116,19 @@ export default function CategoryDetail() {
     }
     resetAcctForm();
     setShowAcctForm(null);
-    load();
+    await load();
   };
 
-  const handleDeleteInstitution = (id: string) => {
-    if (!user || !confirm('Delete this institution and all its accounts?')) return;
-    deleteInstitution(user.id, id);
-    load();
+  const handleDeleteInstitution = async (id: string) => {
+    if (!confirm('Delete this institution and all its accounts?')) return;
+    await deleteInstitution(id);
+    await load();
   };
 
-  const handleDeleteAccount = (id: string) => {
-    if (!user || !confirm('Delete this account?')) return;
-    deleteAccount(user.id, id);
-    load();
+  const handleDeleteAccount = async (id: string) => {
+    if (!confirm('Delete this account?')) return;
+    await deleteAccount(id);
+    await load();
   };
 
   const startEditInst = (inst: Institution) => {

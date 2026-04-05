@@ -42,7 +42,9 @@ export default function Dashboard() {
   const [stats, setStats] = useState<{ totalInstitutions: number; totalAccounts: number; categoryCounts: CategoryStat[] } | null>(null);
 
   useEffect(() => {
-    if (user) setStats(getStats(user.id));
+    if (user) {
+      getStats(user.id).then(setStats);
+    }
   }, [user]);
 
   if (!stats) return <div className="loading">Loading...</div>;

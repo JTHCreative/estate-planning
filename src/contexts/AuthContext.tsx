@@ -1,10 +1,17 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import {
-  registerUser, loginUser, logoutUser, getCurrentUser, getPartnerInfo,
-  linkPartner, unlinkPartner,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+} from 'firebase/auth';
+import { auth } from '../lib/firebase';
+import {
+  createUserProfile, getUserProfile, getPartnerProfile,
+  linkPartner as linkPartnerFn, unlinkPartner as unlinkPartnerFn,
 } from '../lib/storage';
-import type { StoredUser } from '../lib/storage';
+import type { UserProfile } from '../lib/storage';
 
 export interface User {
   id: string;
@@ -21,9 +28,9 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, firstName: string, lastName: string) => Promise<void>;
   logout: () => void;
-  refreshUser: () => void;
-  doLinkPartner: (partnerCode: string) => void;
-  doUnlinkPartner: () => void;
+  refreshUser: () => Promise<void>;
+  doLinkPartner: (partnerCode: string) => Promise<void>;
+  doUnlinkPartner: () => Promise<void>;
   loading: boolean;
 }
 
@@ -35,16 +42,16 @@ export function useAuth() {
   return ctx;
 }
 
-function toUser(stored: StoredUser): User {
-  const partner = getPartnerInfo(stored);
+async function profileToUser(profile: UserProfile): Promise<User> {
+  const partner = await getPartnerProfile(profile);
   return {
-    id: stored.id,
-    email: stored.email,
-    firstName: stored.firstName,
-    lastName: stored.lastName,
-    partnerCode: stored.partnerCode,
-    partnerId: stored.partnerId,
-    partner: partner ? { id: partner.id, email: partner.email, firstName: partner.firstName, lastName: partner.lastName } : null,
+    id: profile.uid,
+    email: profile.email,
+    firstName: profile.firstName,
+    lastName: profile.lastName,
+    partnerCode: profile.partnerCode,
+    partnerId: profile.partnerId,
+    partner: partner ? { id: partner.uid, email: partner.email, firstName: partner.firstName, lastName: partner.lastName } : null,
   };
 }
 
@@ -52,41 +59,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const refreshUser = () => {
-    const current = getCurrentUser();
-    setUser(current ? toUser(current) : null);
+  const refreshUser = async () => {
+    const fbUser = auth.currentUser;
+    if (!fbUser) { setUser(null); return; }
+    const profile = await getUserProfile(fbUser.uid);
+    if (profile) {
+      setUser(await profileToUser(profile));
+    }
   };
 
   useEffect(() => {
-    refreshUser();
-    setLoading(false);
+    const unsub = onAuthStateChanged(auth, async (fbUser) => {
+      if (fbUser) {
+        const profile = await getUserProfile(fbUser.uid);
+        if (profile) {
+          setUser(await profileToUser(profile));
+        }
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
+    });
+    return unsub;
   }, []);
 
   const login = async (email: string, password: string) => {
-    const stored = await loginUser(email, password);
-    setUser(toUser(stored));
+    const cred = await signInWithEmailAndPassword(auth, email, password);
+    const profile = await getUserProfile(cred.user.uid);
+    if (profile) setUser(await profileToUser(profile));
   };
 
   const register = async (email: string, password: string, firstName: string, lastName: string) => {
-    const stored = await registerUser(email, password, firstName, lastName);
-    setUser(toUser(stored));
+    const cred = await createUserWithEmailAndPassword(auth, email, password);
+    const profile = await createUserProfile(cred.user.uid, email, firstName, lastName);
+    setUser(await profileToUser(profile));
   };
 
   const logout = () => {
-    logoutUser();
+    signOut(auth);
     setUser(null);
   };
 
-  const doLinkPartner = (partnerCode: string) => {
+  const doLinkPartner = async (partnerCode: string) => {
     if (!user) return;
-    linkPartner(user.id, partnerCode);
-    refreshUser();
+    await linkPartnerFn(user.id, partnerCode);
+    await refreshUser();
   };
 
-  const doUnlinkPartner = () => {
+  const doUnlinkPartner = async () => {
     if (!user) return;
-    unlinkPartner(user.id);
-    refreshUser();
+    await unlinkPartnerFn(user.id);
+    await refreshUser();
   };
 
   return (

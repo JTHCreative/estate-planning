@@ -1,16 +1,16 @@
-// Simple client-side storage using localStorage
-// Data is stored per-user, keyed by email
+import {
+  collection, doc, getDocs, getDoc, setDoc, updateDoc, deleteDoc,
+  query, where, orderBy, serverTimestamp, writeBatch,
+} from 'firebase/firestore';
+import { db } from './firebase';
 
-const USERS_KEY = 'ep_users';
-const CURRENT_USER_KEY = 'ep_current_user';
-const DATA_PREFIX = 'ep_data_';
+// --- Types ---
 
-export interface StoredUser {
-  id: string;
+export interface UserProfile {
+  uid: string;
   email: string;
   firstName: string;
   lastName: string;
-  passwordHash: string;
   partnerCode: string;
   partnerId: string | null;
 }
@@ -23,7 +23,7 @@ export interface Institution {
   website: string | null;
   phone: string | null;
   notes: string | null;
-  createdAt: string;
+  createdAt: any;
 }
 
 export interface Account {
@@ -43,237 +43,150 @@ export interface Account {
   estimatedValue: string | null;
   beneficiary: string | null;
   notes: string | null;
-  createdAt: string;
+  createdAt: any;
 }
 
-interface UserData {
-  institutions: Institution[];
-  accounts: Account[];
+// --- User Profiles ---
+
+export async function createUserProfile(uid: string, email: string, firstName: string, lastName: string): Promise<UserProfile> {
+  const partnerCode = crypto.randomUUID().slice(0, 8).toUpperCase();
+  const profile: UserProfile = { uid, email: email.toLowerCase(), firstName, lastName, partnerCode, partnerId: null };
+  await setDoc(doc(db, 'users', uid), profile);
+  return profile;
 }
 
-function generateId(): string {
-  return crypto.randomUUID();
+export async function getUserProfile(uid: string): Promise<UserProfile | null> {
+  const snap = await getDoc(doc(db, 'users', uid));
+  return snap.exists() ? (snap.data() as UserProfile) : null;
 }
 
-// Simple hash for client-side password verification (not cryptographic security,
-// but adequate for protecting local browser data)
-async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password + 'estate-planning-salt');
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-// --- User management ---
-
-function getUsers(): StoredUser[] {
-  const raw = localStorage.getItem(USERS_KEY);
-  return raw ? JSON.parse(raw) : [];
-}
-
-function saveUsers(users: StoredUser[]) {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
-}
-
-function getUserData(userId: string): UserData {
-  const raw = localStorage.getItem(DATA_PREFIX + userId);
-  return raw ? JSON.parse(raw) : { institutions: [], accounts: [] };
-}
-
-function saveUserData(userId: string, data: UserData) {
-  localStorage.setItem(DATA_PREFIX + userId, JSON.stringify(data));
-}
-
-export async function registerUser(email: string, password: string, firstName: string, lastName: string): Promise<StoredUser> {
-  const users = getUsers();
-  if (users.find(u => u.email === email.toLowerCase())) {
-    throw new Error('Email already registered');
-  }
-
-  const user: StoredUser = {
-    id: generateId(),
-    email: email.toLowerCase(),
-    firstName,
-    lastName,
-    passwordHash: await hashPassword(password),
-    partnerCode: generateId().slice(0, 8).toUpperCase(),
-    partnerId: null,
-  };
-
-  users.push(user);
-  saveUsers(users);
-  saveUserData(user.id, { institutions: [], accounts: [] });
-  localStorage.setItem(CURRENT_USER_KEY, user.id);
-  return user;
-}
-
-export async function loginUser(email: string, password: string): Promise<StoredUser> {
-  const users = getUsers();
-  const user = users.find(u => u.email === email.toLowerCase());
-  if (!user) throw new Error('Invalid email or password');
-
-  const hash = await hashPassword(password);
-  if (hash !== user.passwordHash) throw new Error('Invalid email or password');
-
-  localStorage.setItem(CURRENT_USER_KEY, user.id);
-  return user;
-}
-
-export function logoutUser() {
-  localStorage.removeItem(CURRENT_USER_KEY);
-}
-
-export function getCurrentUser(): StoredUser | null {
-  const userId = localStorage.getItem(CURRENT_USER_KEY);
-  if (!userId) return null;
-  const users = getUsers();
-  return users.find(u => u.id === userId) || null;
-}
-
-export function getPartnerInfo(user: StoredUser): StoredUser | null {
+export async function getPartnerProfile(user: UserProfile): Promise<UserProfile | null> {
   if (!user.partnerId) return null;
-  const users = getUsers();
-  return users.find(u => u.id === user.partnerId) || null;
+  return getUserProfile(user.partnerId);
 }
 
-export function linkPartner(userId: string, partnerCode: string): void {
-  const users = getUsers();
-  const user = users.find(u => u.id === userId);
-  const partner = users.find(u => u.partnerCode === partnerCode);
+export async function linkPartner(userId: string, partnerCode: string): Promise<void> {
+  // Find partner by code
+  const q = query(collection(db, 'users'), where('partnerCode', '==', partnerCode));
+  const snap = await getDocs(q);
+  if (snap.empty) throw new Error('Invalid partner code');
 
-  if (!user || !partner) throw new Error('Invalid partner code');
-  if (partner.id === userId) throw new Error('Cannot link to yourself');
+  const partner = snap.docs[0].data() as UserProfile;
+  if (partner.uid === userId) throw new Error('Cannot link to yourself');
   if (partner.partnerId && partner.partnerId !== userId) throw new Error('That user is already linked to another partner');
 
-  user.partnerId = partner.id;
-  partner.partnerId = user.id;
-  saveUsers(users);
+  const batch = writeBatch(db);
+  batch.update(doc(db, 'users', userId), { partnerId: partner.uid });
+  batch.update(doc(db, 'users', partner.uid), { partnerId: userId });
+  await batch.commit();
 }
 
-export function unlinkPartner(userId: string): void {
-  const users = getUsers();
-  const user = users.find(u => u.id === userId);
-  if (!user) return;
+export async function unlinkPartner(userId: string): Promise<void> {
+  const profile = await getUserProfile(userId);
+  if (!profile?.partnerId) return;
 
-  if (user.partnerId) {
-    const partner = users.find(u => u.id === user.partnerId);
-    if (partner) partner.partnerId = null;
-  }
-  user.partnerId = null;
-  saveUsers(users);
+  const batch = writeBatch(db);
+  batch.update(doc(db, 'users', userId), { partnerId: null });
+  batch.update(doc(db, 'users', profile.partnerId), { partnerId: null });
+  await batch.commit();
 }
 
-// --- Visible user IDs (self + partner) ---
+// --- Helper: visible user IDs ---
 
-function getVisibleUserIds(userId: string): string[] {
-  const users = getUsers();
-  const user = users.find(u => u.id === userId);
+async function getVisibleUserIds(userId: string): Promise<string[]> {
+  const profile = await getUserProfile(userId);
   const ids = [userId];
-  if (user?.partnerId) ids.push(user.partnerId);
+  if (profile?.partnerId) ids.push(profile.partnerId);
   return ids;
 }
 
 // --- Institutions ---
 
-export function getInstitutions(userId: string, categoryId?: string): (Institution & { ownerName: string })[] {
-  const ids = getVisibleUserIds(userId);
-  const users = getUsers();
-  const all: (Institution & { ownerName: string })[] = [];
+export async function getInstitutions(userId: string, categoryId?: string): Promise<(Institution & { ownerName: string })[]> {
+  const ids = await getVisibleUserIds(userId);
+  const results: (Institution & { ownerName: string })[] = [];
 
   for (const uid of ids) {
-    const data = getUserData(uid);
-    const owner = users.find(u => u.id === uid);
-    const ownerName = owner ? `${owner.firstName} ${owner.lastName}` : 'Unknown';
-    for (const inst of data.institutions) {
-      if (!categoryId || inst.categoryId === categoryId) {
-        all.push({ ...inst, ownerName });
-      }
+    const profile = await getUserProfile(uid);
+    const ownerName = profile ? `${profile.firstName} ${profile.lastName}` : 'Unknown';
+
+    let q;
+    if (categoryId) {
+      q = query(collection(db, 'institutions'), where('userId', '==', uid), where('categoryId', '==', categoryId), orderBy('name'));
+    } else {
+      q = query(collection(db, 'institutions'), where('userId', '==', uid), orderBy('name'));
     }
+    const snap = await getDocs(q);
+    snap.forEach(d => results.push({ ...(d.data() as Institution), id: d.id, ownerName }));
   }
-  return all.sort((a, b) => a.name.localeCompare(b.name));
+
+  return results.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export function addInstitution(userId: string, inst: Omit<Institution, 'id' | 'userId' | 'createdAt'>): Institution {
-  const data = getUserData(userId);
-  const newInst: Institution = { ...inst, id: generateId(), userId, createdAt: new Date().toISOString() };
-  data.institutions.push(newInst);
-  saveUserData(userId, data);
-  return newInst;
+export async function addInstitution(userId: string, data: Omit<Institution, 'id' | 'userId' | 'createdAt'>): Promise<Institution> {
+  const ref = doc(collection(db, 'institutions'));
+  const inst: Institution = { ...data, id: ref.id, userId, createdAt: serverTimestamp() };
+  await setDoc(ref, inst);
+  return inst;
 }
 
-export function updateInstitution(userId: string, id: string, updates: Partial<Institution>): void {
-  const ids = getVisibleUserIds(userId);
-  for (const uid of ids) {
-    const data = getUserData(uid);
-    const idx = data.institutions.findIndex(i => i.id === id);
-    if (idx !== -1) {
-      data.institutions[idx] = { ...data.institutions[idx], ...updates };
-      saveUserData(uid, data);
-      return;
-    }
-  }
+export async function updateInstitution(id: string, updates: Partial<Institution>): Promise<void> {
+  await updateDoc(doc(db, 'institutions', id), updates);
 }
 
-export function deleteInstitution(userId: string, id: string): void {
-  const data = getUserData(userId);
-  data.institutions = data.institutions.filter(i => i.id !== id);
-  data.accounts = data.accounts.filter(a => a.institutionId !== id);
-  saveUserData(userId, data);
+export async function deleteInstitution(id: string): Promise<void> {
+  // Delete all accounts under this institution first
+  const q = query(collection(db, 'accounts'), where('institutionId', '==', id));
+  const snap = await getDocs(q);
+  const batch = writeBatch(db);
+  snap.forEach(d => batch.delete(d.ref));
+  batch.delete(doc(db, 'institutions', id));
+  await batch.commit();
 }
 
 // --- Accounts ---
 
-export function getAccounts(userId: string, institutionId?: string): (Account & { ownerName: string })[] {
-  const ids = getVisibleUserIds(userId);
-  const users = getUsers();
-  const all: (Account & { ownerName: string })[] = [];
+export async function getAccounts(userId: string, institutionId?: string): Promise<(Account & { ownerName: string })[]> {
+  const ids = await getVisibleUserIds(userId);
+  const results: (Account & { ownerName: string })[] = [];
 
   for (const uid of ids) {
-    const data = getUserData(uid);
-    const owner = users.find(u => u.id === uid);
-    const ownerName = owner ? `${owner.firstName} ${owner.lastName}` : 'Unknown';
-    for (const acct of data.accounts) {
-      if (!institutionId || acct.institutionId === institutionId) {
-        all.push({ ...acct, ownerName });
-      }
+    const profile = await getUserProfile(uid);
+    const ownerName = profile ? `${profile.firstName} ${profile.lastName}` : 'Unknown';
+
+    let q;
+    if (institutionId) {
+      q = query(collection(db, 'accounts'), where('userId', '==', uid), where('institutionId', '==', institutionId));
+    } else {
+      q = query(collection(db, 'accounts'), where('userId', '==', uid));
     }
+    const snap = await getDocs(q);
+    snap.forEach(d => results.push({ ...(d.data() as Account), id: d.id, ownerName }));
   }
-  return all.sort((a, b) => a.accountName.localeCompare(b.accountName));
+
+  return results.sort((a, b) => a.accountName.localeCompare(b.accountName));
 }
 
-export function addAccount(userId: string, acct: Omit<Account, 'id' | 'userId' | 'createdAt'>): Account {
-  const data = getUserData(userId);
-  const newAcct: Account = { ...acct, id: generateId(), userId, createdAt: new Date().toISOString() };
-  data.accounts.push(newAcct);
-  saveUserData(userId, data);
-  return newAcct;
+export async function addAccount(userId: string, data: Omit<Account, 'id' | 'userId' | 'createdAt'>): Promise<Account> {
+  const ref = doc(collection(db, 'accounts'));
+  const acct: Account = { ...data, id: ref.id, userId, createdAt: serverTimestamp() };
+  await setDoc(ref, acct);
+  return acct;
 }
 
-export function updateAccount(userId: string, id: string, updates: Partial<Account>): void {
-  const ids = getVisibleUserIds(userId);
-  for (const uid of ids) {
-    const data = getUserData(uid);
-    const idx = data.accounts.findIndex(a => a.id === id);
-    if (idx !== -1) {
-      data.accounts[idx] = { ...data.accounts[idx], ...updates };
-      saveUserData(uid, data);
-      return;
-    }
-  }
+export async function updateAccount(id: string, updates: Partial<Account>): Promise<void> {
+  await updateDoc(doc(db, 'accounts', id), updates);
 }
 
-export function deleteAccount(userId: string, id: string): void {
-  const data = getUserData(userId);
-  data.accounts = data.accounts.filter(a => a.id !== id);
-  saveUserData(userId, data);
+export async function deleteAccount(id: string): Promise<void> {
+  await deleteDoc(doc(db, 'accounts', id));
 }
 
 // --- Stats ---
 
-export function getStats(userId: string) {
-  const institutions = getInstitutions(userId);
-  const accounts = getAccounts(userId);
+export async function getStats(userId: string) {
+  const institutions = await getInstitutions(userId);
+  const accounts = await getAccounts(userId);
 
   const categoryCounts = CATEGORIES.map(cat => ({
     ...cat,
@@ -288,38 +201,7 @@ export function getStats(userId: string) {
   };
 }
 
-// --- Export / Import for partner sharing ---
-
-export function exportUserData(userId: string): string {
-  const data = getUserData(userId);
-  return JSON.stringify(data, null, 2);
-}
-
-export function importPartnerData(userId: string, jsonString: string): void {
-  const imported: UserData = JSON.parse(jsonString);
-  if (!imported.institutions || !imported.accounts) throw new Error('Invalid data format');
-
-  // Merge imported data — assign new IDs to avoid conflicts, mark as partner data
-  const data = getUserData(userId);
-  const idMap = new Map<string, string>();
-
-  for (const inst of imported.institutions) {
-    const newId = generateId();
-    idMap.set(inst.id, newId);
-    data.institutions.push({ ...inst, id: newId, userId });
-  }
-
-  for (const acct of imported.accounts) {
-    const newInstId = idMap.get(acct.institutionId);
-    if (newInstId) {
-      data.accounts.push({ ...acct, id: generateId(), institutionId: newInstId, userId });
-    }
-  }
-
-  saveUserData(userId, data);
-}
-
-// --- Categories (static, no backend needed) ---
+// --- Categories (static) ---
 
 export const CATEGORIES = [
   { id: 'bank-accounts', name: 'Bank Accounts', description: 'Checking, savings, money market, and CD accounts', icon: 'landmark', sort_order: 1 },

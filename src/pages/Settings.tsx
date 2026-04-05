@@ -1,7 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { exportUserData, importPartnerData } from '../lib/storage';
-import { Link2, Unlink, Copy, Check, Download, Upload } from 'lucide-react';
+import { Link2, Unlink, Copy, Check } from 'lucide-react';
 
 export default function Settings() {
   const { user, doLinkPartner, doUnlinkPartner } = useAuth();
@@ -9,62 +8,40 @@ export default function Settings() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleLink = (e: React.FormEvent) => {
+  const handleLink = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setMessage('');
+    setLoading(true);
     try {
-      doLinkPartner(partnerCode);
+      await doLinkPartner(partnerCode);
       setMessage('Partner linked successfully!');
       setPartnerCode('');
     } catch (err: any) {
       setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleUnlink = () => {
+  const handleUnlink = async () => {
     if (!confirm('Unlink your partner? You will no longer see each other\'s data.')) return;
     setError('');
     setMessage('');
-    doUnlinkPartner();
-    setMessage('Partner unlinked');
+    try {
+      await doUnlinkPartner();
+      setMessage('Partner unlinked');
+    } catch (err: any) {
+      setError(err.message);
+    }
   };
 
   const copyCode = () => {
     navigator.clipboard.writeText(user?.partnerCode || '');
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleExport = () => {
-    if (!user) return;
-    const data = exportUserData(user.id);
-    const blob = new Blob([data], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `estate-planning-${user.firstName.toLowerCase()}-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !user) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        importPartnerData(user.id, reader.result as string);
-        setMessage('Data imported successfully!');
-        setError('');
-      } catch (err: any) {
-        setError('Failed to import: ' + err.message);
-      }
-    };
-    reader.readAsText(file);
-    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   return (
@@ -84,8 +61,8 @@ export default function Settings() {
       <div className="settings-section">
         <h3>Partner Linking</h3>
         <p className="section-desc">
-          Link your account with your partner to share all estate planning data.
-          Both partners must be registered on the <strong>same browser/device</strong>, or use Export/Import below to share across devices.
+          Link your account with your partner to share all estate planning data between your accounts.
+          Both partners can be on any device — data syncs through the cloud.
         </p>
 
         <div className="partner-code-box">
@@ -122,8 +99,8 @@ export default function Settings() {
                   placeholder="e.g. A1B2C3D4"
                   required
                 />
-                <button type="submit" className="btn btn-primary">
-                  <Link2 size={16} /> Link Partner
+                <button type="submit" className="btn btn-primary" disabled={loading}>
+                  <Link2 size={16} /> {loading ? 'Linking...' : 'Link Partner'}
                 </button>
               </div>
             </div>
@@ -132,23 +109,6 @@ export default function Settings() {
 
         {message && <div className="success-msg">{message}</div>}
         {error && <div className="error-msg">{error}</div>}
-      </div>
-
-      <div className="settings-section">
-        <h3>Data Export & Import</h3>
-        <p className="section-desc">
-          Export your data as a JSON file to back up or share with your partner on another device.
-          Import a partner's exported file to merge their data into your view.
-        </p>
-        <div className="export-import-btns">
-          <button className="btn btn-primary" onClick={handleExport}>
-            <Download size={16} /> Export My Data
-          </button>
-          <button className="btn btn-primary" onClick={() => fileInputRef.current?.click()}>
-            <Upload size={16} /> Import Partner Data
-          </button>
-          <input ref={fileInputRef} type="file" accept=".json" onChange={handleImport} style={{ display: 'none' }} />
-        </div>
       </div>
     </div>
   );
