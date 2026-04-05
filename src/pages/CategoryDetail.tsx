@@ -325,10 +325,11 @@ export default function CategoryDetail() {
                           {instAccounts.map(acct => (
                             <div key={acct.id} className="account-card">
                               <div className="account-header">
-                                <div>
-                                  <strong>{acct.accountName}</strong>
+                                <div className="account-header-info">
+                                  <div className="account-owner-avatar">{acct.ownerName.split(' ').map(n => n[0]).join('')}</div>
+                                  <span className="account-owner-name">{acct.ownerName}</span>
                                   {acct.accountType && <span className="badge">{acct.accountType}</span>}
-                                  <span className="meta">{acct.ownerName}</span>
+                                  <strong>{acct.accountName}</strong>
                                 </div>
                                 <div className="account-actions">
                                   <button className="btn btn-icon" onClick={() => startEditAcct(acct)}><Edit3 size={14} /></button>
