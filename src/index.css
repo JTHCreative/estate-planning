@@ -342,6 +342,28 @@ a:hover { text-decoration: underline; }
   margin-bottom: 10px;
 }
 
+.account-header-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.account-owner-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(232,120,94,0.15);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+  text-transform: uppercase;
+}
+
+.account-owner-name { font-size: 13px; color: var(--text-muted); }
 .account-header strong { font-size: 14px; }
 .account-actions { display: flex; gap: 4px; }
 
