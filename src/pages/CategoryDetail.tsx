@@ -12,6 +12,297 @@ import { Plus, ArrowLeft, Trash2, Edit3, ChevronDown, ChevronRight, Eye, EyeOff,
 type InstitutionWithOwner = Institution & { ownerName: string };
 type AccountWithOwner = Account & { ownerName: string };
 
+interface FieldConfig {
+  key: string;
+  label: string;
+  type?: string;
+  placeholder?: string;
+}
+
+// Category-specific form fields
+const categoryFields: Record<string, { typePlaceholder: string; fields: FieldConfig[] }> = {
+  'bank-accounts': {
+    typePlaceholder: 'e.g. Checking, Savings, CD, Money Market',
+    fields: [
+      { key: 'accountNumber', label: 'Account Number' },
+      { key: 'routingNumber', label: 'Routing Number' },
+      { key: 'username', label: 'Login Username' },
+      { key: 'password', label: 'Login Password', type: 'password' },
+      { key: 'url', label: 'Website URL' },
+      { key: 'estimatedValue', label: 'Balance', placeholder: 'e.g. $50,000' },
+      { key: 'beneficiary', label: 'Beneficiary / POD' },
+      { key: 'contactName', label: 'Contact Name' },
+      { key: 'contactPhone', label: 'Contact Phone' },
+      { key: 'contactEmail', label: 'Contact Email', type: 'email' },
+    ],
+  },
+  'investment-accounts': {
+    typePlaceholder: 'e.g. Brokerage, Mutual Fund, Stock Account',
+    fields: [
+      { key: 'accountNumber', label: 'Account Number' },
+      { key: 'username', label: 'Login Username' },
+      { key: 'password', label: 'Login Password', type: 'password' },
+      { key: 'url', label: 'Website URL' },
+      { key: 'estimatedValue', label: 'Estimated Value', placeholder: 'e.g. $250,000' },
+      { key: 'beneficiary', label: 'Beneficiary / TOD' },
+      { key: 'contactName', label: 'Advisor / Broker Name' },
+      { key: 'contactPhone', label: 'Advisor Phone' },
+      { key: 'contactEmail', label: 'Advisor Email', type: 'email' },
+    ],
+  },
+  'retirement-accounts': {
+    typePlaceholder: 'e.g. 401(k), IRA, Roth IRA, Pension, 403(b)',
+    fields: [
+      { key: 'accountNumber', label: 'Account Number' },
+      { key: 'username', label: 'Login Username' },
+      { key: 'password', label: 'Login Password', type: 'password' },
+      { key: 'url', label: 'Website URL' },
+      { key: 'estimatedValue', label: 'Estimated Value', placeholder: 'e.g. $500,000' },
+      { key: 'beneficiary', label: 'Primary Beneficiary' },
+      { key: 'contactName', label: 'Plan Administrator / Advisor' },
+      { key: 'contactPhone', label: 'Contact Phone' },
+      { key: 'contactEmail', label: 'Contact Email', type: 'email' },
+    ],
+  },
+  'insurance-policies': {
+    typePlaceholder: 'e.g. Life, Health, Auto, Home, Umbrella, Long-Term Care',
+    fields: [
+      { key: 'accountNumber', label: 'Policy Number' },
+      { key: 'estimatedValue', label: 'Coverage Amount', placeholder: 'e.g. $500,000' },
+      { key: 'username', label: 'Login Username' },
+      { key: 'password', label: 'Login Password', type: 'password' },
+      { key: 'url', label: 'Website URL' },
+      { key: 'beneficiary', label: 'Beneficiary' },
+      { key: 'contactName', label: 'Agent Name' },
+      { key: 'contactPhone', label: 'Agent Phone' },
+      { key: 'contactEmail', label: 'Agent Email', type: 'email' },
+    ],
+  },
+  'real-estate': {
+    typePlaceholder: 'e.g. Primary Residence, Rental, Vacation Home, Land',
+    fields: [
+      { key: 'accountNumber', label: 'Parcel / Property ID' },
+      { key: 'estimatedValue', label: 'Estimated Value', placeholder: 'e.g. $350,000' },
+      { key: 'routingNumber', label: 'Mortgage Account #' },
+      { key: 'beneficiary', label: 'Title Holder / Deed Names' },
+      { key: 'contactName', label: 'Agent / Property Manager' },
+      { key: 'contactPhone', label: 'Contact Phone' },
+      { key: 'contactEmail', label: 'Contact Email', type: 'email' },
+      { key: 'url', label: 'Mortgage Portal URL' },
+      { key: 'username', label: 'Portal Username' },
+      { key: 'password', label: 'Portal Password', type: 'password' },
+    ],
+  },
+  'vehicles': {
+    typePlaceholder: 'e.g. Car, Truck, Boat, RV, Motorcycle',
+    fields: [
+      { key: 'accountNumber', label: 'VIN / Hull ID' },
+      { key: 'estimatedValue', label: 'Estimated Value', placeholder: 'e.g. $25,000' },
+      { key: 'routingNumber', label: 'Loan Account #' },
+      { key: 'beneficiary', label: 'Title Holder' },
+      { key: 'contactName', label: 'Lender / Dealer Contact' },
+      { key: 'contactPhone', label: 'Contact Phone' },
+      { key: 'contactEmail', label: 'Contact Email', type: 'email' },
+    ],
+  },
+  'business-interests': {
+    typePlaceholder: 'e.g. LLC, Corporation, Partnership, Sole Proprietorship',
+    fields: [
+      { key: 'accountNumber', label: 'EIN / Tax ID' },
+      { key: 'estimatedValue', label: 'Estimated Value', placeholder: 'e.g. $100,000' },
+      { key: 'beneficiary', label: 'Ownership / Partners' },
+      { key: 'contactName', label: 'Business Attorney / CPA' },
+      { key: 'contactPhone', label: 'Contact Phone' },
+      { key: 'contactEmail', label: 'Contact Email', type: 'email' },
+      { key: 'url', label: 'Website' },
+      { key: 'username', label: 'Login Username' },
+      { key: 'password', label: 'Login Password', type: 'password' },
+    ],
+  },
+  'digital-assets': {
+    typePlaceholder: 'e.g. Crypto Wallet, NFTs, Domain, Digital Store',
+    fields: [
+      { key: 'accountNumber', label: 'Wallet Address / Account ID' },
+      { key: 'username', label: 'Login Username' },
+      { key: 'password', label: 'Login Password', type: 'password' },
+      { key: 'url', label: 'Website / Exchange URL' },
+      { key: 'estimatedValue', label: 'Estimated Value', placeholder: 'e.g. $10,000' },
+      { key: 'routingNumber', label: 'Recovery Phrase / Seed (secure!)' },
+      { key: 'beneficiary', label: 'Designated Heir' },
+    ],
+  },
+  'debts-liabilities': {
+    typePlaceholder: 'e.g. Mortgage, Auto Loan, Credit Card, Student Loan, HELOC',
+    fields: [
+      { key: 'accountNumber', label: 'Account Number' },
+      { key: 'estimatedValue', label: 'Balance Owed', placeholder: 'e.g. $120,000' },
+      { key: 'routingNumber', label: 'Interest Rate', placeholder: 'e.g. 4.5%' },
+      { key: 'username', label: 'Login Username' },
+      { key: 'password', label: 'Login Password', type: 'password' },
+      { key: 'url', label: 'Payment Portal URL' },
+      { key: 'contactName', label: 'Lender Contact' },
+      { key: 'contactPhone', label: 'Contact Phone' },
+      { key: 'contactEmail', label: 'Contact Email', type: 'email' },
+    ],
+  },
+  'estate-documents': {
+    typePlaceholder: 'e.g. Will, Trust, Power of Attorney, Healthcare Directive',
+    fields: [
+      { key: 'accountNumber', label: 'Document Reference #' },
+      { key: 'estimatedValue', label: 'Date Executed', placeholder: 'e.g. 2024-01-15' },
+      { key: 'beneficiary', label: 'Named Parties / Beneficiaries' },
+      { key: 'contactName', label: 'Attorney Name' },
+      { key: 'contactPhone', label: 'Attorney Phone' },
+      { key: 'contactEmail', label: 'Attorney Email', type: 'email' },
+      { key: 'url', label: 'Digital Copy Location' },
+    ],
+  },
+  'tax-records': {
+    typePlaceholder: 'e.g. Federal Return, State Return, Business Return',
+    fields: [
+      { key: 'accountNumber', label: 'EIN / SSN (last 4)' },
+      { key: 'username', label: 'IRS/State Login Username' },
+      { key: 'password', label: 'Login Password', type: 'password' },
+      { key: 'url', label: 'Filing Portal URL' },
+      { key: 'contactName', label: 'CPA / Tax Preparer' },
+      { key: 'contactPhone', label: 'Contact Phone' },
+      { key: 'contactEmail', label: 'Contact Email', type: 'email' },
+    ],
+  },
+  'personal-property': {
+    typePlaceholder: 'e.g. Jewelry, Art, Collectibles, Antiques, Firearms',
+    fields: [
+      { key: 'accountNumber', label: 'Serial # / Appraisal ID' },
+      { key: 'estimatedValue', label: 'Appraised Value', placeholder: 'e.g. $15,000' },
+      { key: 'beneficiary', label: 'Intended Heir' },
+      { key: 'contactName', label: 'Appraiser / Insurance Agent' },
+      { key: 'contactPhone', label: 'Contact Phone' },
+      { key: 'contactEmail', label: 'Contact Email', type: 'email' },
+    ],
+  },
+  'subscriptions': {
+    typePlaceholder: 'e.g. Streaming, Software, Gym, Club Membership',
+    fields: [
+      { key: 'accountNumber', label: 'Member / Account ID' },
+      { key: 'username', label: 'Login Username' },
+      { key: 'password', label: 'Login Password', type: 'password' },
+      { key: 'url', label: 'Website URL' },
+      { key: 'estimatedValue', label: 'Monthly Cost', placeholder: 'e.g. $14.99/mo' },
+      { key: 'contactPhone', label: 'Support Phone' },
+    ],
+  },
+  'social-media': {
+    typePlaceholder: 'e.g. Email, Facebook, Instagram, Cloud Storage',
+    fields: [
+      { key: 'username', label: 'Username / Email' },
+      { key: 'password', label: 'Password', type: 'password' },
+      { key: 'url', label: 'URL' },
+      { key: 'accountNumber', label: 'Recovery Email / Phone' },
+      { key: 'routingNumber', label: '2FA Method', placeholder: 'e.g. Authenticator, SMS' },
+    ],
+  },
+  'utilities': {
+    typePlaceholder: 'e.g. Electric, Gas, Water, Internet, Phone, Trash',
+    fields: [
+      { key: 'accountNumber', label: 'Account Number' },
+      { key: 'username', label: 'Login Username' },
+      { key: 'password', label: 'Login Password', type: 'password' },
+      { key: 'url', label: 'Website URL' },
+      { key: 'estimatedValue', label: 'Monthly Cost', placeholder: 'e.g. $150/mo' },
+      { key: 'contactPhone', label: 'Support Phone' },
+    ],
+  },
+  'healthcare': {
+    typePlaceholder: 'e.g. Doctor, Dentist, Pharmacy, Specialist, HSA/FSA',
+    fields: [
+      { key: 'accountNumber', label: 'Member / Patient ID' },
+      { key: 'username', label: 'Portal Username' },
+      { key: 'password', label: 'Portal Password', type: 'password' },
+      { key: 'url', label: 'Patient Portal URL' },
+      { key: 'estimatedValue', label: 'HSA/FSA Balance', placeholder: 'e.g. $3,500' },
+      { key: 'contactName', label: 'Provider Name' },
+      { key: 'contactPhone', label: 'Office Phone' },
+      { key: 'contactEmail', label: 'Office Email', type: 'email' },
+    ],
+  },
+  'education': {
+    typePlaceholder: 'e.g. 529 Plan, Student Loan, Education Savings',
+    fields: [
+      { key: 'accountNumber', label: 'Account Number' },
+      { key: 'username', label: 'Login Username' },
+      { key: 'password', label: 'Login Password', type: 'password' },
+      { key: 'url', label: 'Website URL' },
+      { key: 'estimatedValue', label: 'Balance', placeholder: 'e.g. $25,000' },
+      { key: 'beneficiary', label: 'Beneficiary / Student' },
+      { key: 'contactName', label: 'Advisor / Servicer' },
+      { key: 'contactPhone', label: 'Contact Phone' },
+      { key: 'contactEmail', label: 'Contact Email', type: 'email' },
+    ],
+  },
+  'trusts-entities': {
+    typePlaceholder: 'e.g. Revocable Trust, Irrevocable Trust, Family LLC',
+    fields: [
+      { key: 'accountNumber', label: 'EIN / Tax ID' },
+      { key: 'estimatedValue', label: 'Estimated Value', placeholder: 'e.g. $1,000,000' },
+      { key: 'beneficiary', label: 'Trustees / Beneficiaries' },
+      { key: 'contactName', label: 'Attorney / Trustee' },
+      { key: 'contactPhone', label: 'Contact Phone' },
+      { key: 'contactEmail', label: 'Contact Email', type: 'email' },
+      { key: 'url', label: 'Document Location' },
+    ],
+  },
+  'emergency-contacts': {
+    typePlaceholder: 'e.g. Attorney, CPA, Financial Advisor, Executor, Family',
+    fields: [
+      { key: 'contactName', label: 'Full Name' },
+      { key: 'contactPhone', label: 'Phone Number' },
+      { key: 'contactEmail', label: 'Email Address', type: 'email' },
+      { key: 'accountNumber', label: 'Relationship / Role' },
+      { key: 'url', label: 'Website' },
+    ],
+  },
+  'final-wishes': {
+    typePlaceholder: 'e.g. Funeral Home, Cemetery, Cremation, Organ Donation',
+    fields: [
+      { key: 'accountNumber', label: 'Policy / Pre-plan #' },
+      { key: 'estimatedValue', label: 'Pre-paid Amount', placeholder: 'e.g. $8,000' },
+      { key: 'contactName', label: 'Funeral Director / Contact' },
+      { key: 'contactPhone', label: 'Contact Phone' },
+      { key: 'contactEmail', label: 'Contact Email', type: 'email' },
+    ],
+  },
+};
+
+const defaultFields: { typePlaceholder: string; fields: FieldConfig[] } = {
+  typePlaceholder: 'e.g. Account Type',
+  fields: [
+    { key: 'accountNumber', label: 'Account Number' },
+    { key: 'routingNumber', label: 'Routing Number' },
+    { key: 'username', label: 'Login Username' },
+    { key: 'password', label: 'Login Password', type: 'password' },
+    { key: 'url', label: 'Website URL' },
+    { key: 'estimatedValue', label: 'Estimated Value', placeholder: 'e.g. $50,000' },
+    { key: 'beneficiary', label: 'Beneficiary' },
+    { key: 'contactName', label: 'Contact Name' },
+    { key: 'contactPhone', label: 'Contact Phone' },
+    { key: 'contactEmail', label: 'Contact Email', type: 'email' },
+  ],
+};
+
+// Map field keys to acctForm keys
+const fieldToFormKey: Record<string, string> = {
+  accountNumber: 'accountNumber',
+  routingNumber: 'routingNumber',
+  username: 'username',
+  password: 'password',
+  url: 'url',
+  estimatedValue: 'estimatedValue',
+  beneficiary: 'beneficiary',
+  contactName: 'contactName',
+  contactPhone: 'contactPhone',
+  contactEmail: 'contactEmail',
+};
+
 export default function CategoryDetail() {
   const { categoryId } = useParams();
   const { user } = useAuth();
@@ -255,56 +546,35 @@ export default function CategoryDetail() {
                               <button className="btn btn-ghost" onClick={() => setShowAcctForm(null)}><X size={18} /></button>
                             </div>
                             <form onSubmit={e => handleAddAccount(e, inst.id)}>
-                              <div className="form-grid">
-                                <div className="form-group">
-                                  <label>Account Name *</label>
-                                  <input type="text" value={acctForm.accountName} onChange={e => setAcctForm(f => ({ ...f, accountName: e.target.value }))} required />
-                                </div>
-                                <div className="form-group">
-                                  <label>Account Type</label>
-                                  <input type="text" value={acctForm.accountType} onChange={e => setAcctForm(f => ({ ...f, accountType: e.target.value }))} placeholder="e.g. Checking, Savings, IRA" />
-                                </div>
-                                <div className="form-group">
-                                  <label>Account Number</label>
-                                  <input type="text" value={acctForm.accountNumber} onChange={e => setAcctForm(f => ({ ...f, accountNumber: e.target.value }))} />
-                                </div>
-                                <div className="form-group">
-                                  <label>Routing Number</label>
-                                  <input type="text" value={acctForm.routingNumber} onChange={e => setAcctForm(f => ({ ...f, routingNumber: e.target.value }))} />
-                                </div>
-                                <div className="form-group">
-                                  <label>Login Username</label>
-                                  <input type="text" value={acctForm.username} onChange={e => setAcctForm(f => ({ ...f, username: e.target.value }))} />
-                                </div>
-                                <div className="form-group">
-                                  <label>Login Password</label>
-                                  <input type="password" value={acctForm.password} onChange={e => setAcctForm(f => ({ ...f, password: e.target.value }))} />
-                                </div>
-                                <div className="form-group">
-                                  <label>Website URL</label>
-                                  <input type="text" value={acctForm.url} onChange={e => setAcctForm(f => ({ ...f, url: e.target.value }))} />
-                                </div>
-                                <div className="form-group">
-                                  <label>Estimated Value</label>
-                                  <input type="text" value={acctForm.estimatedValue} onChange={e => setAcctForm(f => ({ ...f, estimatedValue: e.target.value }))} placeholder="e.g. $50,000" />
-                                </div>
-                                <div className="form-group">
-                                  <label>Beneficiary</label>
-                                  <input type="text" value={acctForm.beneficiary} onChange={e => setAcctForm(f => ({ ...f, beneficiary: e.target.value }))} />
-                                </div>
-                                <div className="form-group">
-                                  <label>Contact Name</label>
-                                  <input type="text" value={acctForm.contactName} onChange={e => setAcctForm(f => ({ ...f, contactName: e.target.value }))} />
-                                </div>
-                                <div className="form-group">
-                                  <label>Contact Phone</label>
-                                  <input type="text" value={acctForm.contactPhone} onChange={e => setAcctForm(f => ({ ...f, contactPhone: e.target.value }))} />
-                                </div>
-                                <div className="form-group">
-                                  <label>Contact Email</label>
-                                  <input type="email" value={acctForm.contactEmail} onChange={e => setAcctForm(f => ({ ...f, contactEmail: e.target.value }))} />
-                                </div>
-                              </div>
+                              {(() => {
+                                const config = categoryFields[categoryId!] || defaultFields;
+                                return (
+                                  <div className="form-grid">
+                                    <div className="form-group">
+                                      <label>Account Name *</label>
+                                      <input type="text" value={acctForm.accountName} onChange={e => setAcctForm(f => ({ ...f, accountName: e.target.value }))} required />
+                                    </div>
+                                    <div className="form-group">
+                                      <label>Type</label>
+                                      <input type="text" value={acctForm.accountType} onChange={e => setAcctForm(f => ({ ...f, accountType: e.target.value }))} placeholder={config.typePlaceholder} />
+                                    </div>
+                                    {config.fields.map(field => {
+                                      const formKey = fieldToFormKey[field.key] as keyof typeof acctForm;
+                                      return (
+                                        <div className="form-group" key={field.key}>
+                                          <label>{field.label}</label>
+                                          <input
+                                            type={field.type || 'text'}
+                                            value={acctForm[formKey]}
+                                            onChange={e => setAcctForm(f => ({ ...f, [formKey]: e.target.value }))}
+                                            placeholder={field.placeholder}
+                                          />
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                );
+                              })()}
                               <div className="form-group form-full">
                                 <label>Notes</label>
                                 <textarea value={acctForm.notes} onChange={e => setAcctForm(f => ({ ...f, notes: e.target.value }))} />
