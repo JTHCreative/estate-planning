@@ -20,7 +20,7 @@ interface FieldConfig {
 }
 
 // Category-specific form fields
-const categoryFields: Record<string, { typePlaceholder: string; fields: FieldConfig[] }> = {
+const categoryFields: Record<string, { typePlaceholder: string; fields: FieldConfig[]; accountLabel?: string; addLabel?: string; nameLabel?: string }> = {
   'bank-accounts': {
     typePlaceholder: 'e.g. Checking, Savings, CD, Money Market',
     fields: [
@@ -80,21 +80,27 @@ const categoryFields: Record<string, { typePlaceholder: string; fields: FieldCon
   },
   'real-estate': {
     typePlaceholder: 'e.g. Primary Residence, Rental, Vacation Home, Land',
+    accountLabel: 'Properties',
+    addLabel: 'Add Property',
+    nameLabel: 'Property Name',
     fields: [
+      { key: 'url', label: 'Street Address', placeholder: 'e.g. 123 Main St' },
+      { key: 'contactEmail', label: 'City, State, ZIP', placeholder: 'e.g. Austin, TX 78701' },
       { key: 'accountNumber', label: 'Parcel / Property ID' },
       { key: 'estimatedValue', label: 'Estimated Value', placeholder: 'e.g. $350,000' },
       { key: 'routingNumber', label: 'Mortgage Account #' },
       { key: 'beneficiary', label: 'Title Holder / Deed Names' },
       { key: 'contactName', label: 'Agent / Property Manager' },
       { key: 'contactPhone', label: 'Contact Phone' },
-      { key: 'contactEmail', label: 'Contact Email', type: 'email' },
-      { key: 'url', label: 'Mortgage Portal URL' },
-      { key: 'username', label: 'Portal Username' },
-      { key: 'password', label: 'Portal Password', type: 'password' },
+      { key: 'username', label: 'Mortgage Portal Username' },
+      { key: 'password', label: 'Mortgage Portal Password', type: 'password' },
     ],
   },
   'vehicles': {
     typePlaceholder: 'e.g. Car, Truck, Boat, RV, Motorcycle',
+    accountLabel: 'Vehicles',
+    addLabel: 'Add Vehicle',
+    nameLabel: 'Vehicle Name',
     fields: [
       { key: 'accountNumber', label: 'VIN / Hull ID' },
       { key: 'estimatedValue', label: 'Estimated Value', placeholder: 'e.g. $25,000' },
@@ -253,6 +259,9 @@ const categoryFields: Record<string, { typePlaceholder: string; fields: FieldCon
   },
   'emergency-contacts': {
     typePlaceholder: 'e.g. Attorney, CPA, Financial Advisor, Executor, Family',
+    accountLabel: 'Contacts',
+    addLabel: 'Add Contact',
+    nameLabel: 'Contact Label',
     fields: [
       { key: 'contactName', label: 'Full Name' },
       { key: 'contactPhone', label: 'Phone Number' },
@@ -307,6 +316,11 @@ export default function CategoryDetail() {
   const { categoryId } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const config = categoryFields[categoryId || ''] || defaultFields;
+  const itemLabel = config.accountLabel || 'Accounts';
+  const itemLabelSingular = itemLabel.endsWith('s') ? itemLabel.slice(0, -1) : itemLabel;
+  const addItemLabel = config.addLabel || 'Add Account';
+  const nameFieldLabel = config.nameLabel || 'Account Name';
   const [category, setCategory] = useState<typeof CATEGORIES[0] | null>(null);
   const [institutions, setInstitutions] = useState<InstitutionWithOwner[]>([]);
   const [accounts, setAccounts] = useState<AccountWithOwner[]>([]);
@@ -416,13 +430,13 @@ export default function CategoryDetail() {
   };
 
   const handleDeleteInstitution = async (id: string) => {
-    if (!confirm('Delete this institution and all its accounts?')) return;
+    if (!confirm(`Delete this institution and all its ${itemLabel.toLowerCase()}?`)) return;
     await deleteInstitution(id);
     await load();
   };
 
   const handleDeleteAccount = async (id: string) => {
-    if (!confirm('Delete this account?')) return;
+    if (!confirm(`Delete this ${itemLabelSingular.toLowerCase()}?`)) return;
     await deleteAccount(id);
     await load();
   };
@@ -515,7 +529,7 @@ export default function CategoryDetail() {
                   <div className="institution-info">
                     <h4>{inst.name}</h4>
                     <span className="meta">
-                      {inst.ownerName} · {instAccounts.length} account{instAccounts.length !== 1 ? 's' : ''}
+                      {inst.ownerName} · {instAccounts.length} {instAccounts.length === 1 ? itemLabelSingular.toLowerCase() : itemLabel.toLowerCase()}
                       {inst.website && <> · <a href={inst.website.startsWith('http') ? inst.website : `https://${inst.website}`} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>{inst.website}</a></>}
                     </span>
                   </div>
@@ -532,9 +546,9 @@ export default function CategoryDetail() {
 
                     <div className="accounts-section">
                       <div className="accounts-header">
-                        <h5>Accounts</h5>
+                        <h5>{itemLabel}</h5>
                         <button className="btn btn-sm btn-primary" onClick={() => { resetAcctForm(); setEditingAcct(null); setShowAcctForm(inst.id); }}>
-                          <Plus size={14} /> Add Account
+                          <Plus size={14} /> {addItemLabel}
                         </button>
                       </div>
 
@@ -542,7 +556,7 @@ export default function CategoryDetail() {
                         <div className="modal-overlay" onClick={() => setShowAcctForm(null)}>
                           <div className="modal modal-large" onClick={e => e.stopPropagation()}>
                             <div className="modal-header">
-                              <h3>{editingAcct ? 'Edit Account' : 'Add Account'}</h3>
+                              <h3>{editingAcct ? `Edit ${itemLabelSingular}` : addItemLabel}</h3>
                               <button className="btn btn-ghost" onClick={() => setShowAcctForm(null)}><X size={18} /></button>
                             </div>
                             <form onSubmit={e => handleAddAccount(e, inst.id)}>
@@ -551,7 +565,7 @@ export default function CategoryDetail() {
                                 return (
                                   <div className="form-grid">
                                     <div className="form-group">
-                                      <label>Account Name *</label>
+                                      <label>{nameFieldLabel} *</label>
                                       <input type="text" value={acctForm.accountName} onChange={e => setAcctForm(f => ({ ...f, accountName: e.target.value }))} required />
                                     </div>
                                     <div className="form-group">
@@ -581,7 +595,7 @@ export default function CategoryDetail() {
                               </div>
                               <div className="form-actions">
                                 <button type="button" className="btn btn-ghost" onClick={() => setShowAcctForm(null)}>Cancel</button>
-                                <button type="submit" className="btn btn-primary">{editingAcct ? 'Update' : 'Add'} Account</button>
+                                <button type="submit" className="btn btn-primary">{editingAcct ? 'Update' : 'Add'} {itemLabelSingular}</button>
                               </div>
                             </form>
                           </div>
@@ -589,7 +603,7 @@ export default function CategoryDetail() {
                       )}
 
                       {instAccounts.length === 0 ? (
-                        <p className="no-accounts">No accounts yet.</p>
+                        <p className="no-accounts">No {itemLabel.toLowerCase()} yet.</p>
                       ) : (
                         <div className="accounts-list">
                           {instAccounts.map(acct => (
