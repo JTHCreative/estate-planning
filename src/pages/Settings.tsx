@@ -1,14 +1,15 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Link2, Unlink, Copy, Check } from 'lucide-react';
+import { Link2, Unlink, Copy, Check, Camera, X } from 'lucide-react';
 
 export default function Settings() {
-  const { user, doLinkPartner, doUnlinkPartner } = useAuth();
+  const { user, doLinkPartner, doUnlinkPartner, updatePhoto } = useAuth();
   const [partnerCode, setPartnerCode] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleLink = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,6 +45,42 @@ export default function Settings() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Resize and convert to base64 data URL
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const size = 128;
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d')!;
+
+        // Crop to square from center
+        const min = Math.min(img.width, img.height);
+        const sx = (img.width - min) / 2;
+        const sy = (img.height - min) / 2;
+        ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size);
+
+        const dataURL = canvas.toDataURL('image/jpeg', 0.8);
+        updatePhoto(dataURL);
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleRemovePhoto = async () => {
+    await updatePhoto(null);
+  };
+
+  const initials = user ? `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`.toUpperCase() : '';
+
   return (
     <div className="settings-page">
       <div className="page-header">
@@ -52,9 +89,30 @@ export default function Settings() {
 
       <div className="settings-section">
         <h3>Your Profile</h3>
-        <div className="profile-info">
-          <div><label>Name:</label> <span>{user?.firstName} {user?.lastName}</span></div>
-          <div><label>Email:</label> <span>{user?.email}</span></div>
+        <div className="profile-section">
+          <div className="profile-pic-container">
+            <div className="profile-pic">
+              {user?.photoURL
+                ? <img src={user.photoURL} alt={user.firstName} />
+                : <span>{initials}</span>
+              }
+            </div>
+            <div className="profile-pic-actions">
+              <button className="btn btn-sm btn-primary" onClick={() => fileInputRef.current?.click()}>
+                <Camera size={14} /> {user?.photoURL ? 'Change' : 'Add Photo'}
+              </button>
+              {user?.photoURL && (
+                <button className="btn btn-sm btn-danger" onClick={handleRemovePhoto}>
+                  <X size={14} /> Remove
+                </button>
+              )}
+              <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoUpload} style={{ display: 'none' }} />
+            </div>
+          </div>
+          <div className="profile-info">
+            <div><label>Name:</label> <span>{user?.firstName} {user?.lastName}</span></div>
+            <div><label>Email:</label> <span>{user?.email}</span></div>
+          </div>
         </div>
       </div>
 

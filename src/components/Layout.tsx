@@ -12,6 +12,8 @@ export default function Layout() {
     navigate('/login');
   };
 
+  const initials = user ? `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`.toUpperCase() : '';
+
   return (
     <div className="app-layout">
       <nav className="sidebar">
@@ -19,9 +21,17 @@ export default function Layout() {
           <img src={logo} alt="Estate Planner" className="sidebar-logo" />
           <h1>Estate Planner</h1>
         </div>
-        <div className="sidebar-user">
-          <span>{user?.firstName} {user?.lastName}</span>
-          <span className="user-email">{user?.email}</span>
+        <div className="sidebar-user" onClick={() => navigate('/settings')} role="button" tabIndex={0}>
+          <div className="sidebar-avatar">
+            {user?.photoURL
+              ? <img src={user.photoURL} alt={user.firstName} />
+              : <span>{initials}</span>
+            }
+          </div>
+          <div className="sidebar-user-info">
+            <span>{user?.firstName} {user?.lastName}</span>
+            <span className="user-email">{user?.email}</span>
+          </div>
         </div>
         <div className="sidebar-links">
           <NavLink to="/" end><LayoutDashboard size={18} /> Dashboard</NavLink>
