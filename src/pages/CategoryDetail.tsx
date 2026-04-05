@@ -24,7 +24,7 @@ export default function CategoryDetail() {
   const [showAcctForm, setShowAcctForm] = useState<string | null>(null);
   const [editingInst, setEditingInst] = useState<Institution | null>(null);
   const [editingAcct, setEditingAcct] = useState<Account | null>(null);
-  const [revealedPasswords, setRevealedPasswords] = useState<Set<string>>(new Set());
+  const [revealedFields, setRevealedFields] = useState<Set<string>>(new Set());
 
   const [instForm, setInstForm] = useState({ name: '', website: '', phone: '', notes: '' });
   const [acctForm, setAcctForm] = useState({
@@ -54,12 +54,17 @@ export default function CategoryDetail() {
     });
   };
 
-  const togglePassword = (id: string) => {
-    setRevealedPasswords(prev => {
+  const toggleField = (key: string) => {
+    setRevealedFields(prev => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      next.has(key) ? next.delete(key) : next.add(key);
       return next;
     });
+  };
+
+  const maskValue = (value: string) => {
+    if (value.length <= 4) return '••••';
+    return '••••' + value.slice(-4);
   };
 
   const resetInstForm = () => setInstForm({ name: '', website: '', phone: '', notes: '' });
@@ -331,16 +336,46 @@ export default function CategoryDetail() {
                                 </div>
                               </div>
                               <div className="account-details">
-                                {acct.accountNumber && <div><label>Account #:</label> <span>{acct.accountNumber}</span></div>}
-                                {acct.routingNumber && <div><label>Routing #:</label> <span>{acct.routingNumber}</span></div>}
-                                {acct.username && <div><label>Username:</label> <span>{acct.username}</span></div>}
+                                {acct.accountNumber && (
+                                  <div>
+                                    <label>Account #:</label>
+                                    <span className="password-field">
+                                      {revealedFields.has(`${acct.id}-acct`) ? acct.accountNumber : maskValue(acct.accountNumber)}
+                                      <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-acct`)}>
+                                        {revealedFields.has(`${acct.id}-acct`) ? <EyeOff size={14} /> : <Eye size={14} />}
+                                      </button>
+                                    </span>
+                                  </div>
+                                )}
+                                {acct.routingNumber && (
+                                  <div>
+                                    <label>Routing #:</label>
+                                    <span className="password-field">
+                                      {revealedFields.has(`${acct.id}-rtn`) ? acct.routingNumber : maskValue(acct.routingNumber)}
+                                      <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-rtn`)}>
+                                        {revealedFields.has(`${acct.id}-rtn`) ? <EyeOff size={14} /> : <Eye size={14} />}
+                                      </button>
+                                    </span>
+                                  </div>
+                                )}
+                                {acct.username && (
+                                  <div>
+                                    <label>Username:</label>
+                                    <span className="password-field">
+                                      {revealedFields.has(`${acct.id}-user`) ? acct.username : maskValue(acct.username)}
+                                      <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-user`)}>
+                                        {revealedFields.has(`${acct.id}-user`) ? <EyeOff size={14} /> : <Eye size={14} />}
+                                      </button>
+                                    </span>
+                                  </div>
+                                )}
                                 {acct.passwordEncrypted && (
                                   <div>
                                     <label>Password:</label>
                                     <span className="password-field">
-                                      {revealedPasswords.has(acct.id) ? acct.passwordEncrypted : '••••••••'}
-                                      <button className="btn btn-icon btn-tiny" onClick={() => togglePassword(acct.id)}>
-                                        {revealedPasswords.has(acct.id) ? <EyeOff size={14} /> : <Eye size={14} />}
+                                      {revealedFields.has(`${acct.id}-pass`) ? acct.passwordEncrypted : '••••••••'}
+                                      <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-pass`)}>
+                                        {revealedFields.has(`${acct.id}-pass`) ? <EyeOff size={14} /> : <Eye size={14} />}
                                       </button>
                                     </span>
                                   </div>
