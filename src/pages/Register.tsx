@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { Shield } from 'lucide-react';
+import logo from '../assets/logo.svg';
 
 export default function Register() {
   const { register } = useAuth();
@@ -33,7 +33,7 @@ export default function Register() {
     <div className="auth-page">
       <div className="auth-card">
         <div className="auth-header">
-          <Shield size={40} />
+          <img src={logo} alt="Estate Planner" className="auth-logo" />
           <h1>Create Account</h1>
           <p>Start organizing your estate plan</p>
         </div>

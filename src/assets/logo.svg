@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- Outer shield shape -->
+  <path d="M100 10 L180 50 L180 110 C180 155 145 185 100 195 C55 185 20 155 20 110 L20 50 Z" fill="#252525" stroke="#e8785e" stroke-width="4"/>
+  <!-- Inner shield accent -->
+  <path d="M100 28 L166 60 L166 108 C166 146 137 171 100 180 C63 171 34 146 34 108 L34 60 Z" fill="none" stroke="#e8785e" stroke-width="1.5" opacity="0.3"/>
+  <!-- House/estate icon -->
+  <path d="M100 62 L65 88 L65 130 L85 130 L85 110 L115 110 L115 130 L135 130 L135 88 Z" fill="none" stroke="#e8785e" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Chimney -->
+  <rect x="118" y="68" width="10" height="18" fill="none" stroke="#e8785e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Checkmark overlay -->
+  <path d="M78 140 L92 154 L126 120" fill="none" stroke="#e8785e" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
