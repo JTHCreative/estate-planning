@@ -78,6 +78,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    // Safety timeout — never stay on loading screen more than 5 seconds
+    const timeout = setTimeout(() => {
+      setLoading(false);
+    }, 5000);
+
     const unsub = onAuthStateChanged(auth, async (fbUser) => {
       try {
         if (fbUser) {
@@ -85,22 +90,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (profile) {
             setUser(await profileToUser(profile));
           } else {
-            // Auth exists but no Firestore profile yet (race condition on register)
-            setUser(null);
+            // Auth exists but no Firestore profile — create one from auth data
+            const newProfile = await createUserProfile(
+              fbUser.uid,
+              fbUser.email || '',
+              fbUser.displayName?.split(' ')[0] || 'User',
+              fbUser.displayName?.split(' ').slice(1).join(' ') || '',
+            );
+            setUser(await profileToUser(newProfile));
           }
         } else {
           setUser(null);
         }
       } catch (err) {
         console.error('Auth state error:', err);
-        setUser(null);
+        // If Firestore fails, still set a minimal user from Firebase Auth
+        if (fbUser) {
+          setUser({
+            id: fbUser.uid,
+            email: fbUser.email || '',
+            firstName: fbUser.displayName || 'User',
+            lastName: '',
+            partnerCode: '',
+            partnerId: null,
+          });
+        } else {
+          setUser(null);
+        }
       }
+      clearTimeout(timeout);
       setLoading(false);
     }, (err) => {
       console.error('Auth listener error:', err);
+      clearTimeout(timeout);
       setLoading(false);
     });
-    return unsub;
+
+    return () => {
+      unsub();
+      clearTimeout(timeout);
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
