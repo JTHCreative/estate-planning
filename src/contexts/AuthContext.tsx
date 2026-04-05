@@ -1,7 +1,12 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
+import {
+  registerUser, loginUser, logoutUser, getCurrentUser, getPartnerInfo,
+  linkPartner, unlinkPartner,
+} from '../lib/storage';
+import type { StoredUser } from '../lib/storage';
 
-interface User {
+export interface User {
   id: string;
   email: string;
   firstName: string;
@@ -13,11 +18,12 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  token: string | null;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, firstName: string, lastName: string) => Promise<void>;
   logout: () => void;
-  refreshUser: () => Promise<void>;
+  refreshUser: () => void;
+  doLinkPartner: (partnerCode: string) => void;
+  doUnlinkPartner: () => void;
   loading: boolean;
 }
 
@@ -29,75 +35,62 @@ export function useAuth() {
   return ctx;
 }
 
-async function apiFetch(path: string, options: RequestInit = {}) {
-  const token = localStorage.getItem('token');
-  const res = await fetch(`/api${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Request failed');
-  return data;
+function toUser(stored: StoredUser): User {
+  const partner = getPartnerInfo(stored);
+  return {
+    id: stored.id,
+    email: stored.email,
+    firstName: stored.firstName,
+    lastName: stored.lastName,
+    partnerCode: stored.partnerCode,
+    partnerId: stored.partnerId,
+    partner: partner ? { id: partner.id, email: partner.email, firstName: partner.firstName, lastName: partner.lastName } : null,
+  };
 }
-
-export { apiFetch };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
 
-  const refreshUser = async () => {
-    try {
-      const data = await apiFetch('/auth/me');
-      setUser(data);
-    } catch {
-      setToken(null);
-      setUser(null);
-      localStorage.removeItem('token');
-    }
+  const refreshUser = () => {
+    const current = getCurrentUser();
+    setUser(current ? toUser(current) : null);
   };
 
   useEffect(() => {
-    if (token) {
-      refreshUser().finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
-  }, [token]);
+    refreshUser();
+    setLoading(false);
+  }, []);
 
   const login = async (email: string, password: string) => {
-    const data = await apiFetch('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-    });
-    localStorage.setItem('token', data.token);
-    setToken(data.token);
-    setUser(data.user);
+    const stored = await loginUser(email, password);
+    setUser(toUser(stored));
   };
 
   const register = async (email: string, password: string, firstName: string, lastName: string) => {
-    const data = await apiFetch('/auth/register', {
-      method: 'POST',
-      body: JSON.stringify({ email, password, firstName, lastName }),
-    });
-    localStorage.setItem('token', data.token);
-    setToken(data.token);
-    setUser(data.user);
+    const stored = await registerUser(email, password, firstName, lastName);
+    setUser(toUser(stored));
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    setToken(null);
+    logoutUser();
     setUser(null);
   };
 
+  const doLinkPartner = (partnerCode: string) => {
+    if (!user) return;
+    linkPartner(user.id, partnerCode);
+    refreshUser();
+  };
+
+  const doUnlinkPartner = () => {
+    if (!user) return;
+    unlinkPartner(user.id);
+    refreshUser();
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, login, register, logout, refreshUser, loading }}>
+    <AuthContext.Provider value={{ user, login, register, logout, refreshUser, doLinkPartner, doUnlinkPartner, loading }}>
       {children}
     </AuthContext.Provider>
   );

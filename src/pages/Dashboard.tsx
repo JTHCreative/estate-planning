@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiFetch, useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
+import { getStats } from '../lib/storage';
 import * as Icons from 'lucide-react';
 
 interface CategoryStat {
@@ -41,8 +42,8 @@ export default function Dashboard() {
   const [stats, setStats] = useState<{ totalInstitutions: number; totalAccounts: number; categoryCounts: CategoryStat[] } | null>(null);
 
   useEffect(() => {
-    apiFetch('/stats').then(setStats);
-  }, []);
+    if (user) setStats(getStats(user.id));
+  }, [user]);
 
   if (!stats) return <div className="loading">Loading...</div>;
 

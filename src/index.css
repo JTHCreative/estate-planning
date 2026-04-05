@@ -493,6 +493,12 @@ a:hover { text-decoration: underline; }
 
 .link-form .input-group input { flex: 1; }
 
+.export-import-btns {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 /* Messages */
 .error-msg {
   background: rgba(239,68,68,0.1);

@@ -1,51 +1,24 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { apiFetch } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
+import {
+  CATEGORIES, getInstitutions, getAccounts,
+  addInstitution, updateInstitution, deleteInstitution,
+  addAccount, updateAccount, deleteAccount,
+} from '../lib/storage';
+import type { Institution, Account } from '../lib/storage';
 import { Plus, ArrowLeft, Trash2, Edit3, ChevronDown, ChevronRight, Eye, EyeOff, X } from 'lucide-react';
 
-interface Institution {
-  id: string;
-  user_id: string;
-  category_id: string;
-  name: string;
-  website: string | null;
-  phone: string | null;
-  notes: string | null;
-  owner_name: string;
-}
-
-interface Account {
-  id: string;
-  institution_id: string;
-  user_id: string;
-  account_name: string;
-  account_type: string | null;
-  account_number: string | null;
-  routing_number: string | null;
-  username: string | null;
-  password_encrypted: string | null;
-  url: string | null;
-  contact_name: string | null;
-  contact_phone: string | null;
-  contact_email: string | null;
-  estimated_value: string | null;
-  beneficiary: string | null;
-  notes: string | null;
-  owner_name: string;
-}
-
-interface Category {
-  id: string;
-  name: string;
-  description: string;
-}
+type InstitutionWithOwner = Institution & { ownerName: string };
+type AccountWithOwner = Account & { ownerName: string };
 
 export default function CategoryDetail() {
   const { categoryId } = useParams();
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const [category, setCategory] = useState<Category | null>(null);
-  const [institutions, setInstitutions] = useState<Institution[]>([]);
-  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [category, setCategory] = useState<typeof CATEGORIES[0] | null>(null);
+  const [institutions, setInstitutions] = useState<InstitutionWithOwner[]>([]);
+  const [accounts, setAccounts] = useState<AccountWithOwner[]>([]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [showInstForm, setShowInstForm] = useState(false);
   const [showAcctForm, setShowAcctForm] = useState<string | null>(null);
@@ -60,18 +33,14 @@ export default function CategoryDetail() {
     contactEmail: '', estimatedValue: '', beneficiary: '', notes: ''
   });
 
-  const load = async () => {
-    const [cats, insts, accts] = await Promise.all([
-      apiFetch('/categories'),
-      apiFetch(`/institutions?categoryId=${categoryId}`),
-      apiFetch('/accounts'),
-    ]);
-    setCategory(cats.find((c: Category) => c.id === categoryId) || null);
-    setInstitutions(insts);
-    setAccounts(accts);
-  };
+  const load = useCallback(() => {
+    if (!user || !categoryId) return;
+    setCategory(CATEGORIES.find(c => c.id === categoryId) || null);
+    setInstitutions(getInstitutions(user.id, categoryId));
+    setAccounts(getAccounts(user.id));
+  }, [user, categoryId]);
 
-  useEffect(() => { load(); }, [categoryId]);
+  useEffect(() => { load(); }, [load]);
 
   const toggleExpand = (id: string) => {
     setExpanded(prev => {
@@ -96,41 +65,65 @@ export default function CategoryDetail() {
     contactEmail: '', estimatedValue: '', beneficiary: '', notes: ''
   });
 
-  const handleAddInstitution = async (e: React.FormEvent) => {
+  const handleAddInstitution = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user || !categoryId) return;
     if (editingInst) {
-      await apiFetch(`/institutions/${editingInst.id}`, { method: 'PUT', body: JSON.stringify(instForm) });
+      updateInstitution(user.id, editingInst.id, {
+        name: instForm.name, website: instForm.website || null,
+        phone: instForm.phone || null, notes: instForm.notes || null,
+      });
       setEditingInst(null);
     } else {
-      await apiFetch('/institutions', { method: 'POST', body: JSON.stringify({ ...instForm, categoryId }) });
+      addInstitution(user.id, {
+        categoryId, name: instForm.name,
+        website: instForm.website || null, phone: instForm.phone || null, notes: instForm.notes || null,
+      });
     }
     resetInstForm();
     setShowInstForm(false);
     load();
   };
 
-  const handleAddAccount = async (e: React.FormEvent, institutionId: string) => {
+  const handleAddAccount = (e: React.FormEvent, institutionId: string) => {
     e.preventDefault();
+    if (!user) return;
     if (editingAcct) {
-      await apiFetch(`/accounts/${editingAcct.id}`, { method: 'PUT', body: JSON.stringify(acctForm) });
+      updateAccount(user.id, editingAcct.id, {
+        accountName: acctForm.accountName, accountType: acctForm.accountType || null,
+        accountNumber: acctForm.accountNumber || null, routingNumber: acctForm.routingNumber || null,
+        username: acctForm.username || null, passwordEncrypted: acctForm.password || null,
+        url: acctForm.url || null, contactName: acctForm.contactName || null,
+        contactPhone: acctForm.contactPhone || null, contactEmail: acctForm.contactEmail || null,
+        estimatedValue: acctForm.estimatedValue || null, beneficiary: acctForm.beneficiary || null,
+        notes: acctForm.notes || null,
+      });
       setEditingAcct(null);
     } else {
-      await apiFetch('/accounts', { method: 'POST', body: JSON.stringify({ ...acctForm, institutionId }) });
+      addAccount(user.id, {
+        institutionId, accountName: acctForm.accountName,
+        accountType: acctForm.accountType || null, accountNumber: acctForm.accountNumber || null,
+        routingNumber: acctForm.routingNumber || null, username: acctForm.username || null,
+        passwordEncrypted: acctForm.password || null, url: acctForm.url || null,
+        contactName: acctForm.contactName || null, contactPhone: acctForm.contactPhone || null,
+        contactEmail: acctForm.contactEmail || null, estimatedValue: acctForm.estimatedValue || null,
+        beneficiary: acctForm.beneficiary || null, notes: acctForm.notes || null,
+      });
     }
     resetAcctForm();
     setShowAcctForm(null);
     load();
   };
 
-  const handleDeleteInstitution = async (id: string) => {
-    if (!confirm('Delete this institution and all its accounts?')) return;
-    await apiFetch(`/institutions/${id}`, { method: 'DELETE' });
+  const handleDeleteInstitution = (id: string) => {
+    if (!user || !confirm('Delete this institution and all its accounts?')) return;
+    deleteInstitution(user.id, id);
     load();
   };
 
-  const handleDeleteAccount = async (id: string) => {
-    if (!confirm('Delete this account?')) return;
-    await apiFetch(`/accounts/${id}`, { method: 'DELETE' });
+  const handleDeleteAccount = (id: string) => {
+    if (!user || !confirm('Delete this account?')) return;
+    deleteAccount(user.id, id);
     load();
   };
 
@@ -142,16 +135,16 @@ export default function CategoryDetail() {
 
   const startEditAcct = (acct: Account) => {
     setAcctForm({
-      accountName: acct.account_name, accountType: acct.account_type || '',
-      accountNumber: acct.account_number || '', routingNumber: acct.routing_number || '',
-      username: acct.username || '', password: acct.password_encrypted || '',
-      url: acct.url || '', contactName: acct.contact_name || '',
-      contactPhone: acct.contact_phone || '', contactEmail: acct.contact_email || '',
-      estimatedValue: acct.estimated_value || '', beneficiary: acct.beneficiary || '',
+      accountName: acct.accountName, accountType: acct.accountType || '',
+      accountNumber: acct.accountNumber || '', routingNumber: acct.routingNumber || '',
+      username: acct.username || '', password: acct.passwordEncrypted || '',
+      url: acct.url || '', contactName: acct.contactName || '',
+      contactPhone: acct.contactPhone || '', contactEmail: acct.contactEmail || '',
+      estimatedValue: acct.estimatedValue || '', beneficiary: acct.beneficiary || '',
       notes: acct.notes || ''
     });
     setEditingAcct(acct);
-    setShowAcctForm(acct.institution_id);
+    setShowAcctForm(acct.institutionId);
   };
 
   if (!category) return <div className="loading">Loading...</div>;
@@ -171,7 +164,6 @@ export default function CategoryDetail() {
         </button>
       </div>
 
-      {/* Add/Edit Institution Modal */}
       {showInstForm && (
         <div className="modal-overlay" onClick={() => setShowInstForm(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
@@ -205,7 +197,6 @@ export default function CategoryDetail() {
         </div>
       )}
 
-      {/* Institutions List */}
       {institutions.length === 0 ? (
         <div className="empty-state">
           <p>No institutions added yet. Click "Add Institution" to get started.</p>
@@ -213,7 +204,7 @@ export default function CategoryDetail() {
       ) : (
         <div className="institutions-list">
           {institutions.map(inst => {
-            const instAccounts = accounts.filter(a => a.institution_id === inst.id);
+            const instAccounts = accounts.filter(a => a.institutionId === inst.id);
             const isExpanded = expanded.has(inst.id);
             return (
               <div key={inst.id} className="institution-card">
@@ -224,7 +215,7 @@ export default function CategoryDetail() {
                   <div className="institution-info">
                     <h4>{inst.name}</h4>
                     <span className="meta">
-                      {inst.owner_name} · {instAccounts.length} account{instAccounts.length !== 1 ? 's' : ''}
+                      {inst.ownerName} · {instAccounts.length} account{instAccounts.length !== 1 ? 's' : ''}
                       {inst.website && <> · <a href={inst.website.startsWith('http') ? inst.website : `https://${inst.website}`} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>{inst.website}</a></>}
                     </span>
                   </div>
@@ -247,7 +238,6 @@ export default function CategoryDetail() {
                         </button>
                       </div>
 
-                      {/* Add/Edit Account Form */}
                       {showAcctForm === inst.id && (
                         <div className="modal-overlay" onClick={() => setShowAcctForm(null)}>
                           <div className="modal modal-large" onClick={e => e.stopPropagation()}>
@@ -327,9 +317,9 @@ export default function CategoryDetail() {
                             <div key={acct.id} className="account-card">
                               <div className="account-header">
                                 <div>
-                                  <strong>{acct.account_name}</strong>
-                                  {acct.account_type && <span className="badge">{acct.account_type}</span>}
-                                  <span className="meta">{acct.owner_name}</span>
+                                  <strong>{acct.accountName}</strong>
+                                  {acct.accountType && <span className="badge">{acct.accountType}</span>}
+                                  <span className="meta">{acct.ownerName}</span>
                                 </div>
                                 <div className="account-actions">
                                   <button className="btn btn-icon" onClick={() => startEditAcct(acct)}><Edit3 size={14} /></button>
@@ -337,14 +327,14 @@ export default function CategoryDetail() {
                                 </div>
                               </div>
                               <div className="account-details">
-                                {acct.account_number && <div><label>Account #:</label> <span>{acct.account_number}</span></div>}
-                                {acct.routing_number && <div><label>Routing #:</label> <span>{acct.routing_number}</span></div>}
+                                {acct.accountNumber && <div><label>Account #:</label> <span>{acct.accountNumber}</span></div>}
+                                {acct.routingNumber && <div><label>Routing #:</label> <span>{acct.routingNumber}</span></div>}
                                 {acct.username && <div><label>Username:</label> <span>{acct.username}</span></div>}
-                                {acct.password_encrypted && (
+                                {acct.passwordEncrypted && (
                                   <div>
                                     <label>Password:</label>
                                     <span className="password-field">
-                                      {revealedPasswords.has(acct.id) ? acct.password_encrypted : '••••••••'}
+                                      {revealedPasswords.has(acct.id) ? acct.passwordEncrypted : '••••••••'}
                                       <button className="btn btn-icon btn-tiny" onClick={() => togglePassword(acct.id)}>
                                         {revealedPasswords.has(acct.id) ? <EyeOff size={14} /> : <Eye size={14} />}
                                       </button>
@@ -352,9 +342,9 @@ export default function CategoryDetail() {
                                   </div>
                                 )}
                                 {acct.url && <div><label>URL:</label> <a href={acct.url.startsWith('http') ? acct.url : `https://${acct.url}`} target="_blank" rel="noreferrer">{acct.url}</a></div>}
-                                {acct.estimated_value && <div><label>Value:</label> <span>{acct.estimated_value}</span></div>}
+                                {acct.estimatedValue && <div><label>Value:</label> <span>{acct.estimatedValue}</span></div>}
                                 {acct.beneficiary && <div><label>Beneficiary:</label> <span>{acct.beneficiary}</span></div>}
-                                {acct.contact_name && <div><label>Contact:</label> <span>{acct.contact_name} {acct.contact_phone ? `· ${acct.contact_phone}` : ''} {acct.contact_email ? `· ${acct.contact_email}` : ''}</span></div>}
+                                {acct.contactName && <div><label>Contact:</label> <span>{acct.contactName} {acct.contactPhone ? `· ${acct.contactPhone}` : ''} {acct.contactEmail ? `· ${acct.contactEmail}` : ''}</span></div>}
                                 {acct.notes && <div><label>Notes:</label> <span>{acct.notes}</span></div>}
                               </div>
                             </div>
