@@ -3,12 +3,13 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  apiKey: "AIzaSyCQAw4KlG3RX5lcslIh6Ev1Z3r7jcpD1lk",
+  authDomain: "estate-planning-4cceb.firebaseapp.com",
+  projectId: "estate-planning-4cceb",
+  storageBucket: "estate-planning-4cceb.firebasestorage.app",
+  messagingSenderId: "696534041164",
+  appId: "1:696534041164:web:2b61e18c4f81c0fce12ae9",
+  measurementId: "G-WH87BT0E75",
 };
 
 const app = initializeApp(firebaseConfig);
