@@ -43,7 +43,12 @@ export function useAuth() {
 }
 
 async function profileToUser(profile: UserProfile): Promise<User> {
-  const partner = await getPartnerProfile(profile);
+  let partner = null;
+  try {
+    partner = await getPartnerProfile(profile);
+  } catch {
+    // Partner profile may not be accessible yet
+  }
   return {
     id: profile.uid,
     email: profile.email,
@@ -62,45 +67,98 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshUser = async () => {
     const fbUser = auth.currentUser;
     if (!fbUser) { setUser(null); return; }
-    const profile = await getUserProfile(fbUser.uid);
-    if (profile) {
-      setUser(await profileToUser(profile));
+    try {
+      const profile = await getUserProfile(fbUser.uid);
+      if (profile) {
+        setUser(await profileToUser(profile));
+      }
+    } catch (err) {
+      console.error('refreshUser error:', err);
     }
   };
 
   useEffect(() => {
+    // Safety timeout — never stay on loading screen more than 5 seconds
+    const timeout = setTimeout(() => {
+      setLoading(false);
+    }, 5000);
+
     const unsub = onAuthStateChanged(auth, async (fbUser) => {
       try {
         if (fbUser) {
           const profile = await getUserProfile(fbUser.uid);
           if (profile) {
             setUser(await profileToUser(profile));
+          } else {
+            // Auth exists but no Firestore profile — create one from auth data
+            const newProfile = await createUserProfile(
+              fbUser.uid,
+              fbUser.email || '',
+              fbUser.displayName?.split(' ')[0] || 'User',
+              fbUser.displayName?.split(' ').slice(1).join(' ') || '',
+            );
+            setUser(await profileToUser(newProfile));
           }
         } else {
           setUser(null);
         }
       } catch (err) {
         console.error('Auth state error:', err);
-        setUser(null);
+        // If Firestore fails, still set a minimal user from Firebase Auth
+        if (fbUser) {
+          setUser({
+            id: fbUser.uid,
+            email: fbUser.email || '',
+            firstName: fbUser.displayName || 'User',
+            lastName: '',
+            partnerCode: '',
+            partnerId: null,
+          });
+        } else {
+          setUser(null);
+        }
       }
+      clearTimeout(timeout);
       setLoading(false);
     }, (err) => {
       console.error('Auth listener error:', err);
+      clearTimeout(timeout);
       setLoading(false);
     });
-    return unsub;
+
+    return () => {
+      unsub();
+      clearTimeout(timeout);
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
     const cred = await signInWithEmailAndPassword(auth, email, password);
-    const profile = await getUserProfile(cred.user.uid);
-    if (profile) setUser(await profileToUser(profile));
+    try {
+      const profile = await getUserProfile(cred.user.uid);
+      if (profile) {
+        setUser(await profileToUser(profile));
+      }
+    } catch (err) {
+      console.error('Login profile fetch error:', err);
+      // Still set a minimal user so we don't get stuck on loading
+      setUser({
+        id: cred.user.uid,
+        email: cred.user.email || '',
+        firstName: '',
+        lastName: '',
+        partnerCode: '',
+        partnerId: null,
+      });
+    }
+    setLoading(false);
   };
 
   const register = async (email: string, password: string, firstName: string, lastName: string) => {
     const cred = await createUserWithEmailAndPassword(auth, email, password);
     const profile = await createUserProfile(cred.user.uid, email, firstName, lastName);
     setUser(await profileToUser(profile));
+    setLoading(false);
   };
 
   const logout = () => {
