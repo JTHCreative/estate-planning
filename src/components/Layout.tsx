@@ -1,6 +1,7 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, LayoutDashboard, Settings, Shield } from 'lucide-react';
+import { LogOut, LayoutDashboard, Settings } from 'lucide-react';
+import logo from '../assets/logo.svg';
 
 export default function Layout() {
   const { user, logout } = useAuth();
@@ -15,7 +16,7 @@ export default function Layout() {
     <div className="app-layout">
       <nav className="sidebar">
         <div className="sidebar-header">
-          <Shield size={28} />
+          <img src={logo} alt="Estate Planner" className="sidebar-logo" />
           <h1>Estate Planner</h1>
         </div>
         <div className="sidebar-user">

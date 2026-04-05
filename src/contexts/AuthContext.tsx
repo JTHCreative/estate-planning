@@ -70,14 +70,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (fbUser) => {
-      if (fbUser) {
-        const profile = await getUserProfile(fbUser.uid);
-        if (profile) {
-          setUser(await profileToUser(profile));
+      try {
+        if (fbUser) {
+          const profile = await getUserProfile(fbUser.uid);
+          if (profile) {
+            setUser(await profileToUser(profile));
+          }
+        } else {
+          setUser(null);
         }
-      } else {
+      } catch (err) {
+        console.error('Auth state error:', err);
         setUser(null);
       }
+      setLoading(false);
+    }, (err) => {
+      console.error('Auth listener error:', err);
       setLoading(false);
     });
     return unsub;

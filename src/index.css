@@ -50,7 +50,7 @@ a:hover { text-decoration: underline; }
   margin-bottom: 32px;
 }
 
-.auth-header svg { color: var(--primary); margin-bottom: 12px; }
+.auth-logo { width: 80px; height: 80px; margin-bottom: 12px; }
 .auth-header h1 { font-size: 24px; margin-bottom: 4px; }
 .auth-header p { color: var(--text-muted); font-size: 14px; }
 
@@ -154,7 +154,7 @@ a:hover { text-decoration: underline; }
   border-bottom: 1px solid var(--border);
 }
 
-.sidebar-header svg { color: var(--primary); }
+.sidebar-logo { width: 32px; height: 32px; }
 .sidebar-header h1 { font-size: 18px; }
 
 .sidebar-user {
