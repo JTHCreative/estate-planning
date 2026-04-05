@@ -298,6 +298,30 @@ const defaultFields: { typePlaceholder: string; fields: FieldConfig[] } = {
   ],
 };
 
+// Quick-pick institution presets per category
+const institutionPresets: Record<string, string[]> = {
+  'bank-accounts': ['Chase', 'Bank of America', 'Wells Fargo', 'Citibank', 'US Bank', 'Capital One', 'PNC Bank', 'TD Bank', 'Ally Bank', 'Marcus by Goldman Sachs', 'Discover Bank', 'Navy Federal', 'USAA', 'Charles Schwab', 'Local Credit Union', 'Other'],
+  'investment-accounts': ['Fidelity', 'Charles Schwab', 'Vanguard', 'TD Ameritrade', 'E*TRADE', 'Merrill Lynch', 'Morgan Stanley', 'Edward Jones', 'Robinhood', 'Wealthfront', 'Betterment', 'Interactive Brokers', 'Other'],
+  'retirement-accounts': ['Fidelity', 'Vanguard', 'Charles Schwab', 'TIAA', 'T. Rowe Price', 'Empower', 'Principal', 'John Hancock', 'ADP Retirement', 'Merrill Lynch', 'Edward Jones', 'Other'],
+  'insurance-policies': ['State Farm', 'Allstate', 'GEICO', 'Progressive', 'USAA', 'Liberty Mutual', 'Farmers', 'Nationwide', 'MetLife', 'Prudential', 'New York Life', 'Northwestern Mutual', 'Aflac', 'Humana', 'UnitedHealthcare', 'Blue Cross Blue Shield', 'Aetna', 'Other'],
+  'real-estate': ['Primary Residence', 'Rental Property', 'Vacation Home', 'Land / Lot', 'Commercial Property', 'Timeshare', 'Other'],
+  'vehicles': ['Car', 'Truck', 'SUV', 'Motorcycle', 'Boat', 'RV / Camper', 'ATV / UTV', 'Jet Ski', 'Trailer', 'Classic / Antique Car', 'Other'],
+  'business-interests': ['LLC', 'S-Corp', 'C-Corp', 'Sole Proprietorship', 'Partnership', 'Franchise', 'Non-Profit', 'Other'],
+  'digital-assets': ['Coinbase', 'Binance', 'Kraken', 'Crypto.com', 'Ledger Wallet', 'Trezor Wallet', 'MetaMask', 'PayPal Crypto', 'Domain Names', 'Digital Storefront', 'NFT Collection', 'Other'],
+  'debts-liabilities': ['Mortgage', 'Auto Loan', 'Student Loan', 'Credit Card', 'Personal Loan', 'HELOC', 'Medical Debt', 'Business Loan', 'Other'],
+  'estate-documents': ['Last Will & Testament', 'Revocable Living Trust', 'Power of Attorney', 'Healthcare Directive', 'HIPAA Authorization', 'Beneficiary Designations', 'Guardianship Designation', 'Letter of Intent', 'Other'],
+  'tax-records': ['Federal Tax Return', 'State Tax Return', 'Business Tax Return', 'Property Tax', 'CPA / Tax Preparer', 'Other'],
+  'personal-property': ['Jewelry', 'Fine Art', 'Collectibles', 'Antiques', 'Firearms', 'Musical Instruments', 'Electronics', 'Furniture', 'Wine / Spirits Collection', 'Sports Memorabilia', 'Other'],
+  'subscriptions': ['Netflix', 'Spotify', 'Amazon Prime', 'Disney+', 'YouTube Premium', 'Apple One', 'Hulu', 'HBO Max', 'Adobe Creative Cloud', 'Microsoft 365', 'Gym Membership', 'Club Membership', 'Newspaper / Magazine', 'Other'],
+  'social-media': ['Gmail', 'Outlook / Hotmail', 'Yahoo Mail', 'iCloud', 'Facebook', 'Instagram', 'X / Twitter', 'LinkedIn', 'TikTok', 'YouTube', 'Google Drive', 'Dropbox', 'OneDrive', 'Apple ID', 'Other'],
+  'utilities': ['Electric', 'Gas', 'Water / Sewer', 'Internet', 'Cell Phone', 'Home Phone', 'Cable / Satellite TV', 'Trash / Recycling', 'HOA', 'Security System', 'Lawn / Landscaping', 'Other'],
+  'healthcare': ['Primary Doctor', 'Dentist', 'Eye Doctor', 'Specialist', 'Pharmacy', 'Hospital', 'Health Insurance', 'Dental Insurance', 'Vision Insurance', 'HSA Account', 'FSA Account', 'Medicare', 'Other'],
+  'education': ['529 Plan', 'Coverdell ESA', 'Student Loan - Federal', 'Student Loan - Private', 'Scholarship Fund', 'Other'],
+  'trusts-entities': ['Revocable Living Trust', 'Irrevocable Trust', 'Family LLC', 'Family Foundation', 'Charitable Trust', 'Special Needs Trust', 'Other'],
+  'emergency-contacts': ['Attorney', 'CPA / Accountant', 'Financial Advisor', 'Insurance Agent', 'Executor', 'Trustee', 'Guardian', 'Spouse / Partner', 'Family Member', 'Close Friend', 'Neighbor', 'Doctor', 'Other'],
+  'final-wishes': ['Funeral Home', 'Cemetery', 'Crematorium', 'Church / Place of Worship', 'Organ Donation Registry', 'Pre-paid Burial Plan', 'Other'],
+};
+
 // Map field keys to acctForm keys
 const fieldToFormKey: Record<string, string> = {
   accountNumber: 'accountNumber',
@@ -326,6 +350,7 @@ export default function CategoryDetail() {
   const [accounts, setAccounts] = useState<AccountWithOwner[]>([]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [showInstForm, setShowInstForm] = useState(false);
+  const [showInstPicker, setShowInstPicker] = useState(false);
   const [showAcctForm, setShowAcctForm] = useState<string | null>(null);
   const [editingInst, setEditingInst] = useState<Institution | null>(null);
   const [editingAcct, setEditingAcct] = useState<Account | null>(null);
@@ -473,10 +498,41 @@ export default function CategoryDetail() {
           <h2>{category.name}</h2>
           <p>{category.description}</p>
         </div>
-        <button className="btn btn-primary" onClick={() => { resetInstForm(); setEditingInst(null); setShowInstForm(true); }}>
+        <button className="btn btn-primary" onClick={() => { resetInstForm(); setEditingInst(null); setShowInstPicker(true); }}>
           <Plus size={18} /> Add Institution
         </button>
       </div>
+
+      {/* Institution Quick-Pick Grid */}
+      {showInstPicker && (
+        <div className="modal-overlay" onClick={() => setShowInstPicker(false)}>
+          <div className="modal modal-large" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Choose a Type</h3>
+              <button className="btn btn-ghost" onClick={() => setShowInstPicker(false)}><X size={18} /></button>
+            </div>
+            <div className="preset-grid">
+              {(institutionPresets[categoryId!] || ['Other']).map(preset => (
+                <button
+                  key={preset}
+                  className="preset-btn"
+                  onClick={() => {
+                    if (preset === 'Other') {
+                      setInstForm({ name: '', website: '', phone: '', notes: '' });
+                    } else {
+                      setInstForm({ name: preset, website: '', phone: '', notes: '' });
+                    }
+                    setShowInstPicker(false);
+                    setShowInstForm(true);
+                  }}
+                >
+                  {preset}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {showInstForm && (
         <div className="modal-overlay" onClick={() => setShowInstForm(false)}>
@@ -488,7 +544,7 @@ export default function CategoryDetail() {
             <form onSubmit={handleAddInstitution}>
               <div className="form-group">
                 <label>Institution Name *</label>
-                <input type="text" value={instForm.name} onChange={e => setInstForm(f => ({ ...f, name: e.target.value }))} required />
+                <input type="text" value={instForm.name} onChange={e => setInstForm(f => ({ ...f, name: e.target.value }))} required autoFocus />
               </div>
               <div className="form-group">
                 <label>Website</label>
