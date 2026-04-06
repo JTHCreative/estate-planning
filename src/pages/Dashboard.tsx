@@ -277,19 +277,26 @@ export default function Dashboard() {
       <div className="root-cards-grid">
         {rootCategories.map((root, idx) => {
           const RootIcon = root.icon;
-          const rootTotal = stats ? root.categoryIds.reduce((sum: number, catId: string) => {
+          const rootInsts = stats ? root.categoryIds.reduce((sum: number, catId: string) => {
             const cat = stats.categoryCounts.find((c: any) => c.id === catId);
             return sum + (cat ? cat.institution_count : 0);
+          }, 0) : 0;
+          const rootAccts = stats ? root.categoryIds.reduce((sum: number, catId: string) => {
+            const cat = stats.categoryCounts.find((c: any) => c.id === catId);
+            return sum + (cat ? cat.account_count : 0);
           }, 0) : 0;
           return (
             <div
               key={root.name}
-              className={`root-card${selectedRoot === idx ? ' active' : ''}${rootTotal > 0 ? ' has-data' : ''}`}
+              className={`root-card${selectedRoot === idx ? ' active' : ''}${rootInsts > 0 ? ' has-data' : ''}`}
               onClick={() => handleRootClick(idx)}
             >
               <RootIcon size={32} />
               <span className="root-card-name">{root.name}</span>
-              {rootTotal > 0 && <span className="root-card-count">{rootTotal}</span>}
+              <div className="root-card-counts">
+                <span>{rootInsts} {rootInsts === 1 ? 'Institution' : 'Institutions'}</span>
+                <span>{rootAccts} {rootAccts === 1 ? 'Account' : 'Accounts'}</span>
+              </div>
             </div>
           );
         })}
@@ -316,9 +323,10 @@ export default function Dashboard() {
                 >
                   <div className="category-tile-icon"><CatIcon size={28} /></div>
                   <span className="category-tile-name">{cat.name}</span>
-                  {instCount > 0 && (
-                    <span className="category-tile-count">{instCount} · {acctCount}</span>
-                  )}
+                  <div className="category-tile-counts">
+                    <span>{instCount} {instCount === 1 ? 'Institution' : 'Institutions'}</span>
+                    <span>{acctCount} {acctCount === 1 ? 'Account' : 'Accounts'}</span>
+                  </div>
                 </div>
               );
             })}
