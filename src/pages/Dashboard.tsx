@@ -340,7 +340,10 @@ export default function Dashboard() {
                 </button>
               </div>
               {categoryInstitutions.length === 0 ? (
-                <p className="empty-state-small">No institutions yet.</p>
+                <div className="inst-panel-empty">
+                  <p>No institutions yet.</p>
+                  <p className="hint">Click "+ Add" to get started.</p>
+                </div>
               ) : (
                 <div className="inst-panel-list">
                   {categoryInstitutions.map(inst => {
