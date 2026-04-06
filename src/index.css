@@ -540,16 +540,16 @@ a:hover { text-decoration: underline; }
 }
 
 .category-tile.selected {
-  background: #9e3f2a;
-  border-color: #9e3f2a;
-  color: #fff;
+  background: #3d2a25;
+  border-color: #5a3830;
+  color: var(--text);
 }
 
-.category-tile.selected .category-tile-icon { color: #fff; }
-.category-tile.selected .category-tile-name { color: #fff; }
+.category-tile.selected .category-tile-icon { color: var(--primary); }
+.category-tile.selected .category-tile-name { color: var(--text); }
 .category-tile.selected .category-tile-count {
-  background: rgba(255,255,255,0.2);
-  color: #fff;
+  background: var(--primary-alpha-25);
+  color: var(--primary);
 }
 
 .category-tile-icon {
