@@ -387,7 +387,7 @@ a:hover { text-decoration: underline; }
 .two-column-layout {
   display: flex;
   gap: 20px;
-  align-items: flex-start;
+  align-items: stretch;
 }
 
 .inst-panel {
