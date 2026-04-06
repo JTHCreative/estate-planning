@@ -29,11 +29,11 @@
 }
 
 [data-theme="light"] {
-  --bg: #f5f0eb;
-  --bg-card: #ffffff;
-  --bg-card-hover: #faf6f2;
-  --bg-input: #f0ebe5;
-  --border: #ddd5cc;
+  --bg: #e8e3de;
+  --bg-card: #f5f0eb;
+  --bg-card-hover: #efe9e3;
+  --bg-input: #eae4de;
+  --border: #d5cdc4;
   --text: #2d2420;
   --text-muted: #7a6e64;
   --primary: #d4684f;
