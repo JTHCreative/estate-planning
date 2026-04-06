@@ -46,9 +46,10 @@ export interface FieldConfig {
   placeholder?: string;
 }
 
-export const categoryFields: Record<string, { typePlaceholder: string; fields: FieldConfig[]; accountLabel?: string; addLabel?: string; nameLabel?: string }> = {
+export const categoryFields: Record<string, { typePlaceholder: string; typeOptions?: string[]; fields: FieldConfig[]; accountLabel?: string; addLabel?: string; nameLabel?: string }> = {
   'bank-accounts': {
     typePlaceholder: 'e.g. Checking, Savings, CD, Money Market',
+    typeOptions: ['Checking', 'Savings', 'CD', 'Money Market', 'High-Yield Savings', 'Joint Account'],
     fields: [
       { key: 'accountNumber', label: 'Account Number' },
       { key: 'routingNumber', label: 'Routing Number' },
@@ -64,6 +65,7 @@ export const categoryFields: Record<string, { typePlaceholder: string; fields: F
   },
   'investment-accounts': {
     typePlaceholder: 'e.g. Brokerage, Mutual Fund, Stock Account',
+    typeOptions: ['Brokerage', 'Mutual Fund', 'Stock Account', 'Bond Account', 'Index Fund', 'ETF', 'Commodities'],
     fields: [
       { key: 'accountNumber', label: 'Account Number' },
       { key: 'username', label: 'Login Username' },
@@ -78,6 +80,7 @@ export const categoryFields: Record<string, { typePlaceholder: string; fields: F
   },
   'retirement-accounts': {
     typePlaceholder: 'e.g. 401(k), IRA, Roth IRA, Pension, 403(b)',
+    typeOptions: ['401(k)', 'Traditional IRA', 'Roth IRA', 'SEP IRA', 'SIMPLE IRA', '403(b)', '457(b)', 'Pension', 'Annuity'],
     fields: [
       { key: 'accountNumber', label: 'Account Number' },
       { key: 'username', label: 'Login Username' },
@@ -92,6 +95,7 @@ export const categoryFields: Record<string, { typePlaceholder: string; fields: F
   },
   'insurance-policies': {
     typePlaceholder: 'e.g. Life, Health, Auto, Home, Umbrella, Long-Term Care',
+    typeOptions: ['Life', 'Term Life', 'Whole Life', 'Health', 'Auto', 'Homeowners', 'Renters', 'Umbrella', 'Long-Term Care', 'Disability', 'Dental', 'Vision'],
     fields: [
       { key: 'accountNumber', label: 'Policy Number' },
       { key: 'estimatedValue', label: 'Coverage Amount', placeholder: 'e.g. $500,000' },
@@ -106,6 +110,7 @@ export const categoryFields: Record<string, { typePlaceholder: string; fields: F
   },
   'real-estate': {
     typePlaceholder: 'e.g. Primary Residence, Rental, Vacation Home, Land',
+    typeOptions: ['Primary Residence', 'Rental Property', 'Vacation Home', 'Land / Lot', 'Commercial Property', 'Condo / Townhouse', 'Timeshare'],
     accountLabel: 'Properties',
     addLabel: 'Add Property',
     nameLabel: 'Property Name',
@@ -124,6 +129,7 @@ export const categoryFields: Record<string, { typePlaceholder: string; fields: F
   },
   'vehicles': {
     typePlaceholder: 'e.g. Car, Truck, Boat, RV, Motorcycle',
+    typeOptions: ['Car', 'Truck', 'SUV', 'Motorcycle', 'Boat', 'RV / Camper', 'ATV / UTV', 'Jet Ski', 'Trailer', 'Classic Car'],
     accountLabel: 'Vehicles',
     addLabel: 'Add Vehicle',
     nameLabel: 'Vehicle Name',
@@ -139,6 +145,7 @@ export const categoryFields: Record<string, { typePlaceholder: string; fields: F
   },
   'business-interests': {
     typePlaceholder: 'e.g. LLC, Corporation, Partnership, Sole Proprietorship',
+    typeOptions: ['LLC', 'S-Corp', 'C-Corp', 'Sole Proprietorship', 'Partnership', 'LP', 'Non-Profit'],
     fields: [
       { key: 'accountNumber', label: 'EIN / Tax ID' },
       { key: 'estimatedValue', label: 'Estimated Value', placeholder: 'e.g. $100,000' },
@@ -153,6 +160,7 @@ export const categoryFields: Record<string, { typePlaceholder: string; fields: F
   },
   'digital-assets': {
     typePlaceholder: 'e.g. Crypto Wallet, NFTs, Domain, Digital Store',
+    typeOptions: ['Crypto Exchange', 'Hardware Wallet', 'Software Wallet', 'NFT Collection', 'Domain Name', 'Digital Storefront', 'Mining'],
     fields: [
       { key: 'accountNumber', label: 'Wallet Address / Account ID' },
       { key: 'username', label: 'Login Username' },
@@ -165,6 +173,7 @@ export const categoryFields: Record<string, { typePlaceholder: string; fields: F
   },
   'debts-liabilities': {
     typePlaceholder: 'e.g. Mortgage, Auto Loan, Credit Card, Student Loan, HELOC',
+    typeOptions: ['Mortgage', 'Auto Loan', 'Student Loan', 'Credit Card', 'Personal Loan', 'HELOC', 'Medical Debt', 'Business Loan', 'Line of Credit'],
     fields: [
       { key: 'accountNumber', label: 'Account Number' },
       { key: 'estimatedValue', label: 'Balance Owed', placeholder: 'e.g. $120,000' },
@@ -179,6 +188,7 @@ export const categoryFields: Record<string, { typePlaceholder: string; fields: F
   },
   'estate-documents': {
     typePlaceholder: 'e.g. Will, Trust, Power of Attorney, Healthcare Directive',
+    typeOptions: ['Will', 'Living Trust', 'Power of Attorney', 'Healthcare Directive', 'HIPAA Authorization', 'Beneficiary Designation', 'Guardianship', 'Letter of Intent'],
     fields: [
       { key: 'accountNumber', label: 'Document Reference #' },
       { key: 'estimatedValue', label: 'Date Executed', placeholder: 'e.g. 2024-01-15' },
@@ -191,6 +201,7 @@ export const categoryFields: Record<string, { typePlaceholder: string; fields: F
   },
   'tax-records': {
     typePlaceholder: 'e.g. Federal Return, State Return, Business Return',
+    typeOptions: ['Federal Return', 'State Return', 'Business Return', 'Property Tax', 'CPA / Preparer'],
     fields: [
       { key: 'accountNumber', label: 'EIN / SSN (last 4)' },
       { key: 'username', label: 'IRS/State Login Username' },
@@ -203,6 +214,7 @@ export const categoryFields: Record<string, { typePlaceholder: string; fields: F
   },
   'personal-property': {
     typePlaceholder: 'e.g. Jewelry, Art, Collectibles, Antiques, Firearms',
+    typeOptions: ['Jewelry', 'Fine Art', 'Collectibles', 'Antiques', 'Firearms', 'Musical Instruments', 'Electronics', 'Wine / Spirits', 'Sports Memorabilia'],
     fields: [
       { key: 'accountNumber', label: 'Serial # / Appraisal ID' },
       { key: 'estimatedValue', label: 'Appraised Value', placeholder: 'e.g. $15,000' },
@@ -214,6 +226,7 @@ export const categoryFields: Record<string, { typePlaceholder: string; fields: F
   },
   'subscriptions': {
     typePlaceholder: 'e.g. Streaming, Software, Gym, Club Membership',
+    typeOptions: ['Streaming', 'Music', 'Software', 'Cloud Storage', 'Gym / Fitness', 'Club / Membership', 'News / Magazine', 'Gaming'],
     fields: [
       { key: 'accountNumber', label: 'Member / Account ID' },
       { key: 'username', label: 'Login Username' },
@@ -225,6 +238,7 @@ export const categoryFields: Record<string, { typePlaceholder: string; fields: F
   },
   'social-media': {
     typePlaceholder: 'e.g. Email, Facebook, Instagram, Cloud Storage',
+    typeOptions: ['Email', 'Social Media', 'Cloud Storage', 'Photo Storage', 'Messaging', 'Video Platform', 'Professional Network'],
     fields: [
       { key: 'username', label: 'Username / Email' },
       { key: 'password', label: 'Password', type: 'password' },
@@ -235,6 +249,7 @@ export const categoryFields: Record<string, { typePlaceholder: string; fields: F
   },
   'utilities': {
     typePlaceholder: 'e.g. Electric, Gas, Water, Internet, Phone, Trash',
+    typeOptions: ['Electric', 'Gas', 'Water / Sewer', 'Internet', 'Cell Phone', 'Home Phone', 'Cable / Satellite', 'Trash / Recycling', 'HOA', 'Security', 'Lawn Care'],
     fields: [
       { key: 'accountNumber', label: 'Account Number' },
       { key: 'username', label: 'Login Username' },
@@ -246,6 +261,7 @@ export const categoryFields: Record<string, { typePlaceholder: string; fields: F
   },
   'healthcare': {
     typePlaceholder: 'e.g. Doctor, Dentist, Pharmacy, Specialist, HSA/FSA',
+    typeOptions: ['Primary Care', 'Dentist', 'Eye Doctor', 'Specialist', 'Pharmacy', 'Hospital', 'Health Insurance', 'HSA', 'FSA', 'Medicare'],
     fields: [
       { key: 'accountNumber', label: 'Member / Patient ID' },
       { key: 'username', label: 'Portal Username' },
@@ -259,6 +275,7 @@ export const categoryFields: Record<string, { typePlaceholder: string; fields: F
   },
   'education': {
     typePlaceholder: 'e.g. 529 Plan, Student Loan, Education Savings',
+    typeOptions: ['529 Plan', 'Coverdell ESA', 'Federal Student Loan', 'Private Student Loan', 'Scholarship Fund', 'Tuition Account'],
     fields: [
       { key: 'accountNumber', label: 'Account Number' },
       { key: 'username', label: 'Login Username' },
@@ -273,6 +290,7 @@ export const categoryFields: Record<string, { typePlaceholder: string; fields: F
   },
   'trusts-entities': {
     typePlaceholder: 'e.g. Revocable Trust, Irrevocable Trust, Family LLC',
+    typeOptions: ['Revocable Trust', 'Irrevocable Trust', 'Family LLC', 'Family Foundation', 'Charitable Trust', 'Special Needs Trust', 'GRAT'],
     fields: [
       { key: 'accountNumber', label: 'EIN / Tax ID' },
       { key: 'estimatedValue', label: 'Estimated Value', placeholder: 'e.g. $1,000,000' },
@@ -285,6 +303,7 @@ export const categoryFields: Record<string, { typePlaceholder: string; fields: F
   },
   'emergency-contacts': {
     typePlaceholder: 'e.g. Attorney, CPA, Financial Advisor, Executor, Family',
+    typeOptions: ['Attorney', 'CPA', 'Financial Advisor', 'Insurance Agent', 'Executor', 'Trustee', 'Guardian', 'Family', 'Friend', 'Doctor'],
     accountLabel: 'Contacts',
     addLabel: 'Add Contact',
     nameLabel: 'Contact Label',
@@ -298,6 +317,7 @@ export const categoryFields: Record<string, { typePlaceholder: string; fields: F
   },
   'final-wishes': {
     typePlaceholder: 'e.g. Funeral Home, Cemetery, Cremation, Organ Donation',
+    typeOptions: ['Funeral Arrangement', 'Burial Plot', 'Cremation', 'Organ Donation', 'Memorial Service', 'Pre-paid Plan'],
     fields: [
       { key: 'accountNumber', label: 'Policy / Pre-plan #' },
       { key: 'estimatedValue', label: 'Pre-paid Amount', placeholder: 'e.g. $8,000' },
@@ -308,7 +328,7 @@ export const categoryFields: Record<string, { typePlaceholder: string; fields: F
   },
 };
 
-export const defaultFields: { typePlaceholder: string; fields: FieldConfig[]; accountLabel?: string; addLabel?: string; nameLabel?: string } = {
+export const defaultFields: { typePlaceholder: string; typeOptions?: string[]; fields: FieldConfig[]; accountLabel?: string; addLabel?: string; nameLabel?: string } = {
   typePlaceholder: 'e.g. Account Type',
   fields: [
     { key: 'accountNumber', label: 'Account Number' },
