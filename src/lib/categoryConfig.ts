@@ -342,7 +342,7 @@ export const categoryFields: Record<string, { typePlaceholder: string; typeOptio
   },
   'emergency-contacts': {
     typePlaceholder: 'e.g. Attorney, CPA, Financial Advisor, Executor, Family',
-    typeOptions: ['Attorney', 'CPA', 'Financial Advisor', 'Insurance Agent', 'Executor', 'Trustee', 'Guardian', 'Family', 'Friend', 'Doctor'],
+    typeOptions: ['Attorney', 'CPA', 'Financial Advisor', 'Insurance Agent', 'Executor', 'Trustee', 'Guardian', 'Employer', 'Family', 'Friend', 'Doctor'],
     institutionLabel: 'Groups',
     addInstitutionLabel: 'Add Group',
     accountLabel: 'Contacts',
@@ -406,7 +406,7 @@ export const institutionPresets: Record<string, string[]> = {
   'healthcare': ['Primary Doctor', 'Dentist', 'Eye Doctor', 'Specialist', 'Pharmacy', 'Hospital', 'Health Insurance', 'Dental Insurance', 'Vision Insurance', 'HSA Account', 'FSA Account', 'Medicare', 'Other'],
   'education': ['529 Plan', 'Coverdell ESA', 'Student Loan - Federal', 'Student Loan - Private', 'Scholarship Fund', 'Other'],
   'trusts-entities': ['Revocable Living Trust', 'Irrevocable Trust', 'Family LLC', 'Family Foundation', 'Charitable Trust', 'Special Needs Trust', 'Other'],
-  'emergency-contacts': ['Attorney', 'CPA / Accountant', 'Financial Advisor', 'Insurance Agent', 'Executor', 'Trustee', 'Guardian', 'Spouse / Partner', 'Family Member', 'Close Friend', 'Neighbor', 'Doctor', 'Other'],
+  'emergency-contacts': ['Attorney', 'CPA / Accountant', 'Financial Advisor', 'Insurance Agent', 'Executor', 'Trustee', 'Guardian', 'Employer', 'Spouse / Partner', 'Family Member', 'Close Friend', 'Neighbor', 'Doctor', 'Other'],
   'final-wishes': ['Funeral Home', 'Cemetery', 'Crematorium', 'Church / Place of Worship', 'Organ Donation Registry', 'Pre-paid Burial Plan', 'Other'],
 };
 
@@ -497,7 +497,7 @@ export const presetIcons: Record<string, LucideIcon> = {
   // Emergency Contacts
   'Attorney': Gavel, 'CPA / Accountant': Calculator, 'Financial Advisor': DollarSign,
   'Insurance Agent': Shield, 'Executor': UserCheck, 'Trustee': Scale,
-  'Guardian': UserPlus, 'Spouse / Partner': Heart, 'Family Member': Users,
+  'Guardian': UserPlus, 'Employer': Briefcase, 'Spouse / Partner': Heart, 'Family Member': Users,
   'Close Friend': Contact, 'Neighbor': Home, 'Doctor': Stethoscope,
   // Final Wishes
   'Funeral Home': Building, 'Cemetery': MapPin, 'Crematorium': Flame,
