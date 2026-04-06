@@ -96,6 +96,9 @@ export default function Settings() {
         <h2>Settings</h2>
       </div>
 
+      <div className="settings-columns">
+      <div className="settings-left">
+
       <div className="settings-section">
         <h3>Your Profile</h3>
         <div className="profile-section">
@@ -145,6 +148,9 @@ export default function Settings() {
           </button>
         </div>
       </div>
+
+      </div>{/* end settings-left */}
+      <div className="settings-right">
 
       <div className="settings-section">
         <h3><Users size={20} /> Household Members</h3>
@@ -231,6 +237,9 @@ export default function Settings() {
         {message && <div className="success-msg">{message}</div>}
         {error && <div className="error-msg">{error}</div>}
       </div>
+
+      </div>{/* end settings-right */}
+      </div>{/* end settings-columns */}
     </div>
   );
 }
