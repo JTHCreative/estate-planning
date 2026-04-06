@@ -82,8 +82,6 @@ export default function Dashboard() {
     });
   };
 
-  // Can only add/edit when viewing only own data
-  const isOwnDataOnly = activeUserIds.size === 1 && activeUserIds.has(user?.id || '');
 
   // Filter dropdown
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
@@ -442,9 +440,9 @@ export default function Dashboard() {
             <div className="inst-panel">
               <div className="inst-panel-header">
                 <h4>Institutions</h4>
-                {isOwnDataOnly && <button className="btn btn-sm btn-primary" onClick={() => { resetInstForm(); setEditingInst(null); setShowInstPicker(true); }}>
+                <button className="btn btn-sm btn-primary" onClick={() => { resetInstForm(); setEditingInst(null); setShowInstPicker(true); }}>
                   <Plus size={14} /> Add
-                </button>}
+                </button>
               </div>
               {categoryInstitutions.length === 0 ? (
                 <div className="inst-panel-empty">
@@ -484,12 +482,10 @@ export default function Dashboard() {
                             })}
                           </div>
                         )}
-                        {isOwnDataOnly && (
-                          <div className="inst-panel-item-actions" onClick={e => e.stopPropagation()}>
-                            <button className="btn btn-icon" onClick={() => startEditInst(inst)}><Edit3 size={14} /></button>
-                            <button className="btn btn-icon btn-danger" onClick={() => handleDeleteInstitution(inst.id)}><Trash2 size={14} /></button>
-                          </div>
-                        )}
+                        <div className="inst-panel-item-actions" onClick={e => e.stopPropagation()}>
+                          <button className="btn btn-icon" onClick={() => startEditInst(inst)}><Edit3 size={14} /></button>
+                          <button className="btn btn-icon btn-danger" onClick={() => handleDeleteInstitution(inst.id)}><Trash2 size={14} /></button>
+                        </div>
                       </div>
                     );
                   })}
@@ -517,9 +513,9 @@ export default function Dashboard() {
                       {selectedInstitution.phone && <span className="meta"> | {selectedInstitution.phone}</span>}
                       {selectedInstitution.notes && <p className="meta">{selectedInstitution.notes}</p>}
                     </div>
-                    {isOwnDataOnly && <button className="btn btn-sm btn-primary" onClick={() => { resetAcctForm(); setEditingAcct(null); setShowAcctForm(true); }}>
+                    <button className="btn btn-sm btn-primary" onClick={() => { resetAcctForm(); setEditingAcct(null); setShowAcctForm(true); }}>
                       <Plus size={14} /> {addItemLabel}
-                    </button>}
+                    </button>
                   </div>
 
                   {institutionAccounts.length === 0 ? (
@@ -545,12 +541,10 @@ export default function Dashboard() {
                               {acct.accountType && <span className="badge">{acct.accountType}</span>}
                               <strong>{acct.accountName}</strong>
                             </div>
-                            {isOwnDataOnly && (
-                              <div className="account-actions">
-                                <button className="btn btn-icon" onClick={() => startEditAcct(acct)}><Edit3 size={14} /></button>
-                                <button className="btn btn-icon btn-danger" onClick={() => handleDeleteAccount(acct.id)}><Trash2 size={14} /></button>
-                              </div>
-                            )}
+                            <div className="account-actions">
+                              <button className="btn btn-icon" onClick={() => startEditAcct(acct)}><Edit3 size={14} /></button>
+                              <button className="btn btn-icon btn-danger" onClick={() => handleDeleteAccount(acct.id)}><Trash2 size={14} /></button>
+                            </div>
                           </div>
                           <div className="account-details">
                             {acct.accountNumber && (
