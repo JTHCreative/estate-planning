@@ -467,6 +467,18 @@ a:hover { text-decoration: underline; }
 
 .inst-panel-item:hover .inst-panel-item-actions { opacity: 1; }
 
+.inst-panel-empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 16px;
+}
+
+.inst-panel-empty .hint {
+  margin-top: 8px;
+  font-size: 14px;
+}
+
 .acct-panel {
   flex: 1;
   min-width: 0;
