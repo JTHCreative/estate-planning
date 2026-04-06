@@ -305,54 +305,116 @@ a:hover { text-decoration: underline; }
 
 .dash-header h2 { font-size: 26px; font-weight: 700; }
 
-.user-filters {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.filter-wrapper {
+  position: relative;
 }
 
-.user-filter-label {
-  font-size: 12px;
-  color: var(--text-muted);
-  margin-right: 4px;
-}
-
-.user-chip {
+.btn-filter {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  background: var(--bg-input);
-  border: 2px solid var(--border);
-  border-radius: 30px;
-  color: var(--text-muted);
-  font-size: 13px;
+  gap: 7px;
+  padding: 9px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
 }
 
-.user-chip:hover {
-  border-color: var(--primary);
-  color: var(--text);
+.btn-filter:hover { border-color: var(--primary); }
+
+.filter-badge {
+  background: var(--primary);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.user-chip.active {
-  border-color: var(--primary);
-  background: var(--primary-alpha-10);
-  color: var(--text);
+.filter-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
 }
 
-.user-chip-avatar {
-  width: 24px;
-  height: 24px;
+.filter-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  min-width: 260px;
+  z-index: 51;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  overflow: hidden;
+}
+
+.filter-dropdown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.filter-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background 0.15s;
+  font-size: 14px;
+}
+
+.filter-item:hover { background: var(--white-alpha-04); }
+.filter-item.active { color: var(--text); }
+.filter-item:not(.active) { color: var(--text-muted); }
+
+.filter-item-check {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+
+.filter-item.active .filter-item-check {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.filter-item-avatar {
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   object-fit: cover;
+  flex-shrink: 0;
 }
 
-.user-chip-initials {
-  width: 24px;
-  height: 24px;
+.filter-item-initials {
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   background: var(--primary-alpha-15);
   color: var(--primary);
@@ -362,6 +424,7 @@ a:hover { text-decoration: underline; }
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
+  flex-shrink: 0;
 }
 
 /* Root Cards Grid */
