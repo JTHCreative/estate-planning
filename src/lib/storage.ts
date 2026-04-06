@@ -32,6 +32,7 @@ export interface Institution {
   website: string | null;
   phone: string | null;
   notes: string | null;
+  coOwnerIds?: string[];
   createdAt: any;
 }
 
@@ -222,6 +223,20 @@ export async function getAccounts(userId: string, institutionId?: string): Promi
 }
 
 export async function addAccount(userId: string, data: Omit<Account, 'id' | 'userId' | 'createdAt'>): Promise<Account> {
+  // If adding to someone else's institution, become a co-owner
+  const instSnap = await getDoc(doc(db, 'institutions', data.institutionId));
+  if (instSnap.exists()) {
+    const inst = instSnap.data() as Institution;
+    if (inst.userId !== userId) {
+      const existing = inst.coOwnerIds || [];
+      if (!existing.includes(userId)) {
+        await updateDoc(doc(db, 'institutions', data.institutionId), {
+          coOwnerIds: [...existing, userId],
+        });
+      }
+    }
+  }
+
   const ref = doc(collection(db, 'accounts'));
   const acct: Account = { ...data, id: ref.id, userId, createdAt: serverTimestamp() };
   await setDoc(ref, acct);

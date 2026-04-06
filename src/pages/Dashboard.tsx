@@ -482,10 +482,12 @@ export default function Dashboard() {
                             })}
                           </div>
                         )}
-                        {inst.userId === user?.id && (
+                        {(inst.userId === user?.id || (inst.coOwnerIds || []).includes(user?.id || '')) && (
                           <div className="inst-panel-item-actions" onClick={e => e.stopPropagation()}>
                             <button className="btn btn-icon" onClick={() => startEditInst(inst)}><Edit3 size={14} /></button>
-                            <button className="btn btn-icon btn-danger" onClick={() => handleDeleteInstitution(inst.id)}><Trash2 size={14} /></button>
+                            {inst.userId === user?.id && (
+                              <button className="btn btn-icon btn-danger" onClick={() => handleDeleteInstitution(inst.id)}><Trash2 size={14} /></button>
+                            )}
                           </div>
                         )}
                       </div>
