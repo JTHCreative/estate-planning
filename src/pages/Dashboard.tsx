@@ -1,17 +1,36 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { getStats } from '../lib/storage';
+import {
+  CATEGORIES, getInstitutions, getAccounts, getStats,
+  addInstitution, updateInstitution, deleteInstitution,
+  addAccount, updateAccount, deleteAccount,
+} from '../lib/storage';
+import type { Institution, Account } from '../lib/storage';
+import {
+  categoryFields, defaultFields, institutionPresets, presetIcons, fieldToFormKey,
+  Plus, Trash2, Edit3, Eye, EyeOff, X, MoreHorizontal,
+  DollarSign, ShieldCheck, Home, Briefcase, Globe, Zap, Heart,
+} from '../lib/categoryConfig';
 import * as Icons from 'lucide-react';
 
-interface CategoryStat {
-  id: string;
+type InstitutionWithOwner = Institution & { ownerName: string };
+type AccountWithOwner = Account & { ownerName: string };
+
+interface RootCategory {
   name: string;
-  icon: string;
-  sort_order: number;
-  institution_count: number;
-  account_count: number;
+  icon: any;
+  categoryIds: string[];
 }
+
+const rootCategories: RootCategory[] = [
+  { name: 'Financial Accounts', icon: DollarSign, categoryIds: ['bank-accounts', 'investment-accounts', 'retirement-accounts', 'debts-liabilities'] },
+  { name: 'Insurance & Protection', icon: ShieldCheck, categoryIds: ['insurance-policies', 'healthcare'] },
+  { name: 'Property & Assets', icon: Home, categoryIds: ['real-estate', 'vehicles', 'personal-property'] },
+  { name: 'Business & Legal', icon: Briefcase, categoryIds: ['business-interests', 'trusts-entities', 'estate-documents', 'tax-records'] },
+  { name: 'Digital Life', icon: Globe, categoryIds: ['digital-assets', 'social-media', 'subscriptions'] },
+  { name: 'Everyday & Utilities', icon: Zap, categoryIds: ['utilities', 'education'] },
+  { name: 'People & Wishes', icon: Heart, categoryIds: ['emergency-contacts', 'final-wishes'] },
+];
 
 const iconMap: Record<string, any> = {
   'landmark': Icons.Landmark,
@@ -36,144 +55,554 @@ const iconMap: Record<string, any> = {
   'heart': Icons.Heart,
 };
 
-interface RootCategory {
-  name: string;
-  icon: any;
-  categoryIds: string[];
-}
-
-const rootCategories: RootCategory[] = [
-  {
-    name: 'Financial Accounts',
-    icon: Icons.DollarSign,
-    categoryIds: ['bank-accounts', 'investment-accounts', 'retirement-accounts', 'debts-liabilities'],
-  },
-  {
-    name: 'Insurance & Protection',
-    icon: Icons.ShieldCheck,
-    categoryIds: ['insurance-policies', 'healthcare'],
-  },
-  {
-    name: 'Property & Assets',
-    icon: Icons.Home,
-    categoryIds: ['real-estate', 'vehicles', 'personal-property'],
-  },
-  {
-    name: 'Business & Legal',
-    icon: Icons.Briefcase,
-    categoryIds: ['business-interests', 'trusts-entities', 'estate-documents', 'tax-records'],
-  },
-  {
-    name: 'Digital Life',
-    icon: Icons.Globe,
-    categoryIds: ['digital-assets', 'social-media', 'subscriptions'],
-  },
-  {
-    name: 'Everyday & Utilities',
-    icon: Icons.Zap,
-    categoryIds: ['utilities', 'education'],
-  },
-  {
-    name: 'People & Wishes',
-    icon: Icons.Heart,
-    categoryIds: ['emergency-contacts', 'final-wishes'],
-  },
-];
-
 export default function Dashboard() {
   const { user } = useAuth();
-  const navigate = useNavigate();
-  const [stats, setStats] = useState<{ totalInstitutions: number; totalAccounts: number; categoryCounts: CategoryStat[] } | null>(null);
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => new Set(rootCategories.map(r => r.name)));
 
-  useEffect(() => {
-    if (user) {
-      getStats(user.id).then(setStats);
-    }
+  // Navigation state
+  const [selectedRoot, setSelectedRoot] = useState<number | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [selectedInstitutionId, setSelectedInstitutionId] = useState<string | null>(null);
+
+  // Data state
+  const [institutions, setInstitutions] = useState<InstitutionWithOwner[]>([]);
+  const [accounts, setAccounts] = useState<AccountWithOwner[]>([]);
+  const [stats, setStats] = useState<any>(null);
+  // Modal state
+  const [showInstPicker, setShowInstPicker] = useState(false);
+  const [showInstForm, setShowInstForm] = useState(false);
+  const [showAcctForm, setShowAcctForm] = useState(false);
+  const [editingInst, setEditingInst] = useState<Institution | null>(null);
+  const [editingAcct, setEditingAcct] = useState<Account | null>(null);
+
+  // Form state
+  const [instForm, setInstForm] = useState({ name: '', website: '', phone: '', notes: '' });
+  const [acctForm, setAcctForm] = useState({
+    accountName: '', accountType: '', accountNumber: '', routingNumber: '',
+    username: '', password: '', url: '', contactName: '', contactPhone: '',
+    contactEmail: '', estimatedValue: '', beneficiary: '', notes: ''
+  });
+
+  // Reveal state for masked fields
+  const [revealedFields, setRevealedFields] = useState<Set<string>>(new Set());
+
+  // Derived: selected category object
+  const selectedCategory = selectedCategoryId ? CATEGORIES.find(c => c.id === selectedCategoryId) || null : null;
+  const config = selectedCategoryId ? (categoryFields[selectedCategoryId] || defaultFields) : defaultFields;
+  const itemLabel = config.accountLabel || 'Accounts';
+  const itemLabelSingular = itemLabel.endsWith('s') ? itemLabel.slice(0, -1) : itemLabel;
+  const addItemLabel = config.addLabel || 'Add Account';
+  const nameFieldLabel = config.nameLabel || 'Account Name';
+
+  // Institutions filtered for the selected category
+  const categoryInstitutions = institutions.filter(i => i.categoryId === selectedCategoryId);
+  const selectedInstitution = categoryInstitutions.find(i => i.id === selectedInstitutionId) || null;
+  const institutionAccounts = accounts.filter(a => a.institutionId === selectedInstitutionId);
+
+  // Load root-level counts
+  const loadRootCounts = useCallback(async () => {
+    if (!user) return;
+    const s = await getStats(user.id);
+    setStats(s);
   }, [user]);
 
-  const toggleGroup = (name: string) => {
-    setExpandedGroups(prev => {
+  // Load institutions and accounts for the selected category
+  const loadCategoryData = useCallback(async () => {
+    if (!user || !selectedCategoryId) return;
+    const [insts, accts] = await Promise.all([
+      getInstitutions(user.id, selectedCategoryId),
+      getAccounts(user.id),
+    ]);
+    setInstitutions(insts);
+    setAccounts(accts);
+  }, [user, selectedCategoryId]);
+
+  useEffect(() => {
+    loadRootCounts();
+  }, [loadRootCounts]);
+
+  useEffect(() => {
+    if (selectedCategoryId) {
+      loadCategoryData();
+    }
+  }, [selectedCategoryId, loadCategoryData]);
+
+  // Auto-select first institution when category data loads
+  useEffect(() => {
+    if (selectedCategoryId && categoryInstitutions.length > 0 && !selectedInstitutionId) {
+      setSelectedInstitutionId(categoryInstitutions[0].id);
+    }
+  }, [selectedCategoryId, categoryInstitutions, selectedInstitutionId]);
+
+  // Handlers: navigation
+  const handleRootClick = (idx: number) => {
+    if (selectedRoot === idx) {
+      // Collapse
+      setSelectedRoot(null);
+      setSelectedCategoryId(null);
+      setSelectedInstitutionId(null);
+    } else {
+      setSelectedRoot(idx);
+      setSelectedCategoryId(null);
+      setSelectedInstitutionId(null);
+    }
+  };
+
+  const handleSubcategoryClick = (catId: string) => {
+    setSelectedCategoryId(catId);
+    setSelectedInstitutionId(null);
+    setRevealedFields(new Set());
+  };
+
+  const handleBackToRoot = () => {
+    setSelectedCategoryId(null);
+    setSelectedInstitutionId(null);
+    setRevealedFields(new Set());
+  };
+
+  // Handlers: field masking
+  const toggleField = (key: string) => {
+    setRevealedFields(prev => {
       const next = new Set(prev);
-      next.has(name) ? next.delete(name) : next.add(name);
+      next.has(key) ? next.delete(key) : next.add(key);
       return next;
     });
   };
 
-  if (!stats) return <div className="loading">Loading...</div>;
+  const maskValue = (value: string) => {
+    if (value.length <= 4) return '••••';
+    return '••••' + value.slice(-4);
+  };
 
-  const catMap = new Map(stats.categoryCounts.map(c => [c.id, c]));
+  // Handlers: forms
+  const resetInstForm = () => setInstForm({ name: '', website: '', phone: '', notes: '' });
+  const resetAcctForm = () => setAcctForm({
+    accountName: '', accountType: '', accountNumber: '', routingNumber: '',
+    username: '', password: '', url: '', contactName: '', contactPhone: '',
+    contactEmail: '', estimatedValue: '', beneficiary: '', notes: ''
+  });
+
+  // Institution CRUD
+  const handleAddInstitution = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !selectedCategoryId) return;
+    if (editingInst) {
+      await updateInstitution(editingInst.id, {
+        name: instForm.name, website: instForm.website || null,
+        phone: instForm.phone || null, notes: instForm.notes || null,
+      });
+      setEditingInst(null);
+    } else {
+      const newInst = await addInstitution(user.id, {
+        categoryId: selectedCategoryId, name: instForm.name,
+        website: instForm.website || null, phone: instForm.phone || null, notes: instForm.notes || null,
+      });
+      setSelectedInstitutionId(newInst.id);
+    }
+    resetInstForm();
+    setShowInstForm(false);
+    await loadCategoryData();
+    await loadRootCounts();
+  };
+
+  const handleDeleteInstitution = async (id: string) => {
+    if (!confirm(`Delete this institution and all its ${itemLabel.toLowerCase()}?`)) return;
+    await deleteInstitution(id);
+    if (selectedInstitutionId === id) {
+      setSelectedInstitutionId(null);
+    }
+    await loadCategoryData();
+    await loadRootCounts();
+  };
+
+  const startEditInst = (inst: Institution) => {
+    setInstForm({ name: inst.name, website: inst.website || '', phone: inst.phone || '', notes: inst.notes || '' });
+    setEditingInst(inst);
+    setShowInstForm(true);
+  };
+
+  // Account CRUD
+  const handleAddAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !selectedInstitutionId) return;
+    if (editingAcct) {
+      await updateAccount(editingAcct.id, {
+        accountName: acctForm.accountName, accountType: acctForm.accountType || null,
+        accountNumber: acctForm.accountNumber || null, routingNumber: acctForm.routingNumber || null,
+        username: acctForm.username || null, passwordEncrypted: acctForm.password || null,
+        url: acctForm.url || null, contactName: acctForm.contactName || null,
+        contactPhone: acctForm.contactPhone || null, contactEmail: acctForm.contactEmail || null,
+        estimatedValue: acctForm.estimatedValue || null, beneficiary: acctForm.beneficiary || null,
+        notes: acctForm.notes || null,
+      });
+      setEditingAcct(null);
+    } else {
+      await addAccount(user.id, {
+        institutionId: selectedInstitutionId, accountName: acctForm.accountName,
+        accountType: acctForm.accountType || null, accountNumber: acctForm.accountNumber || null,
+        routingNumber: acctForm.routingNumber || null, username: acctForm.username || null,
+        passwordEncrypted: acctForm.password || null, url: acctForm.url || null,
+        contactName: acctForm.contactName || null, contactPhone: acctForm.contactPhone || null,
+        contactEmail: acctForm.contactEmail || null, estimatedValue: acctForm.estimatedValue || null,
+        beneficiary: acctForm.beneficiary || null, notes: acctForm.notes || null,
+      });
+    }
+    resetAcctForm();
+    setShowAcctForm(false);
+    await loadCategoryData();
+    await loadRootCounts();
+  };
+
+  const handleDeleteAccount = async (id: string) => {
+    if (!confirm(`Delete this ${itemLabelSingular.toLowerCase()}?`)) return;
+    await deleteAccount(id);
+    await loadCategoryData();
+    await loadRootCounts();
+  };
+
+  const startEditAcct = (acct: Account) => {
+    setAcctForm({
+      accountName: acct.accountName, accountType: acct.accountType || '',
+      accountNumber: acct.accountNumber || '', routingNumber: acct.routingNumber || '',
+      username: acct.username || '', password: acct.passwordEncrypted || '',
+      url: acct.url || '', contactName: acct.contactName || '',
+      contactPhone: acct.contactPhone || '', contactEmail: acct.contactEmail || '',
+      estimatedValue: acct.estimatedValue || '', beneficiary: acct.beneficiary || '',
+      notes: acct.notes || ''
+    });
+    setEditingAcct(acct);
+    setShowAcctForm(true);
+  };
+
+  // Get the selected root category info for breadcrumb
+  const selectedRootCategory = selectedRoot !== null ? rootCategories[selectedRoot] : null;
 
   return (
     <div className="dashboard">
-      <div className="page-header">
-        <h2>Dashboard</h2>
-        <p>Welcome back, {user?.firstName}. {user?.partner ? `Shared with ${user.partner.firstName} ${user.partner.lastName}.` : 'Link a partner in Settings to share data.'}</p>
-      </div>
-
-      <div className="stats-row">
-        <div className="stat-card">
-          <span className="stat-number">{stats.totalInstitutions}</span>
-          <span className="stat-label">Institutions</span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-number">{stats.totalAccounts}</span>
-          <span className="stat-label">Accounts</span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-number">{stats.categoryCounts.filter(c => c.institution_count > 0).length}</span>
-          <span className="stat-label">Active Categories</span>
-        </div>
-      </div>
-
-      <div className="root-categories">
-        {rootCategories.map(group => {
-          const GroupIcon = group.icon;
-          const isExpanded = expandedGroups.has(group.name);
-          const groupCats = group.categoryIds.map(id => catMap.get(id)).filter(Boolean) as CategoryStat[];
-          const groupInsts = groupCats.reduce((s, c) => s + c.institution_count, 0);
-          const groupAccts = groupCats.reduce((s, c) => s + c.account_count, 0);
-
+      {/* Root Category Cards */}
+      <div className="root-cards-grid">
+        {rootCategories.map((root, idx) => {
+          const RootIcon = root.icon;
+          const rootTotal = stats ? root.categoryIds.reduce((sum: number, catId: string) => {
+            const cat = stats.categoryCounts.find((c: any) => c.id === catId);
+            return sum + (cat ? cat.institution_count : 0);
+          }, 0) : 0;
           return (
-            <div key={group.name} className="root-category">
-              <div className="root-category-header" onClick={() => toggleGroup(group.name)}>
-                <div className="root-category-icon">
-                  <GroupIcon size={20} />
-                </div>
-                <div className="root-category-info">
-                  <h3>{group.name}</h3>
-                  <span>{groupInsts} institution{groupInsts !== 1 ? 's' : ''} · {groupAccts} account{groupAccts !== 1 ? 's' : ''}</span>
-                </div>
-                <div className="root-category-toggle">
-                  {isExpanded ? <Icons.ChevronDown size={18} /> : <Icons.ChevronRight size={18} />}
-                </div>
-              </div>
+            <div
+              key={root.name}
+              className={`root-card${selectedRoot === idx ? ' active' : ''}${rootTotal > 0 ? ' has-data' : ''}`}
+              onClick={() => handleRootClick(idx)}
+            >
+              <RootIcon size={32} />
+              <span className="root-card-name">{root.name}</span>
+              {rootTotal > 0 && <span className="root-card-count">{rootTotal}</span>}
+            </div>
+          );
+        })}
+      </div>
 
-              {isExpanded && (
-                <div className="category-tile-grid">
-                  {groupCats.map(cat => {
-                    const IconComponent = iconMap[cat.icon] || Icons.Folder;
-                    const hasData = cat.institution_count > 0;
+      {/* Subcategory Section */}
+      {selectedRoot !== null && selectedRootCategory && !selectedCategoryId && (
+        <div className="subcategory-section">
+          <h3>{selectedRootCategory.name}</h3>
+          <div className="category-tile-grid">
+            {selectedRootCategory.categoryIds.map(catId => {
+              const cat = CATEGORIES.find(c => c.id === catId);
+              if (!cat) return null;
+              const CatIcon = iconMap[cat.icon] || Icons.Folder;
+              const catStat = stats?.categoryCounts?.find((c: any) => c.id === catId);
+              const instCount = catStat?.institution_count || 0;
+              const acctCount = catStat?.account_count || 0;
+              return (
+                <div
+                  key={catId}
+                  className={`category-tile${instCount > 0 ? ' has-data' : ''}`}
+                  onClick={() => handleSubcategoryClick(catId)}
+                >
+                  <div className="category-tile-icon"><CatIcon size={28} /></div>
+                  <span className="category-tile-name">{cat.name}</span>
+                  {instCount > 0 && (
+                    <span className="category-tile-count">{instCount} · {acctCount}</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Drilled-in: Breadcrumb + Two-column layout */}
+      {selectedCategoryId && selectedRootCategory && selectedCategory && (
+        <>
+          {/* Breadcrumb */}
+          <div className="breadcrumb">
+            <button className="btn btn-ghost" onClick={handleBackToRoot}>
+              {selectedRootCategory.name}
+            </button>
+            <span className="breadcrumb-sep">&gt;</span>
+            <span className="breadcrumb-current">{selectedCategory.name}</span>
+          </div>
+
+          <div className="two-column-layout">
+            {/* Left: Institution Panel */}
+            <div className="inst-panel">
+              <div className="inst-panel-header">
+                <h4>Institutions</h4>
+                <button className="btn btn-sm btn-primary" onClick={() => { resetInstForm(); setEditingInst(null); setShowInstPicker(true); }}>
+                  <Plus size={14} /> Add
+                </button>
+              </div>
+              {categoryInstitutions.length === 0 ? (
+                <p className="empty-state-small">No institutions yet.</p>
+              ) : (
+                <div className="inst-panel-list">
+                  {categoryInstitutions.map(inst => {
+                    const instAcctCount = accounts.filter(a => a.institutionId === inst.id).length;
                     return (
-                      <div key={cat.id} className={`category-tile ${hasData ? 'has-data' : ''}`} onClick={() => navigate(`/category/${cat.id}`)}>
-                        <div className="category-tile-icon">
-                          <IconComponent size={28} />
+                      <div
+                        key={inst.id}
+                        className={`inst-panel-item${selectedInstitutionId === inst.id ? ' active' : ''}`}
+                        onClick={() => setSelectedInstitutionId(inst.id)}
+                      >
+                        <div className="inst-panel-item-info">
+                          <strong>{inst.name}</strong>
+                          <span className="meta">{instAcctCount} {instAcctCount === 1 ? itemLabelSingular.toLowerCase() : itemLabel.toLowerCase()}</span>
                         </div>
-                        <span className="category-tile-name">{cat.name}</span>
-                        {hasData && (
-                          <span className="category-tile-count">
-                            {cat.institution_count} · {cat.account_count}
-                          </span>
-                        )}
+                        <div className="inst-panel-item-actions" onClick={e => e.stopPropagation()}>
+                          <button className="btn btn-icon" onClick={() => startEditInst(inst)}><Edit3 size={14} /></button>
+                          <button className="btn btn-icon btn-danger" onClick={() => handleDeleteInstitution(inst.id)}><Trash2 size={14} /></button>
+                        </div>
                       </div>
                     );
                   })}
                 </div>
               )}
             </div>
-          );
-        })}
-      </div>
+
+            {/* Right: Account Panel */}
+            <div className="acct-panel">
+              {selectedInstitution ? (
+                <>
+                  <div className="acct-panel-header">
+                    <div>
+                      <h4>{selectedInstitution.name}</h4>
+                      {selectedInstitution.website && (
+                        <a
+                          href={selectedInstitution.website.startsWith('http') ? selectedInstitution.website : `https://${selectedInstitution.website}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inst-website-link"
+                        >
+                          {selectedInstitution.website}
+                        </a>
+                      )}
+                      {selectedInstitution.phone && <span className="meta"> | {selectedInstitution.phone}</span>}
+                      {selectedInstitution.notes && <p className="meta">{selectedInstitution.notes}</p>}
+                    </div>
+                    <button className="btn btn-sm btn-primary" onClick={() => { resetAcctForm(); setEditingAcct(null); setShowAcctForm(true); }}>
+                      <Plus size={14} /> {addItemLabel}
+                    </button>
+                  </div>
+
+                  {institutionAccounts.length === 0 ? (
+                    <div className="empty-state">
+                      <p>No {itemLabel.toLowerCase()} yet. Click "{addItemLabel}" to get started.</p>
+                    </div>
+                  ) : (
+                    <div className="accounts-list">
+                      {institutionAccounts.map(acct => (
+                        <div key={acct.id} className="account-card">
+                          <div className="account-header">
+                            <div className="account-header-info">
+                              <div className="account-owner-avatar">{acct.ownerName.split(' ').map(n => n[0]).join('')}</div>
+                              <span className="account-owner-name">{acct.ownerName}</span>
+                              {acct.accountType && <span className="badge">{acct.accountType}</span>}
+                              <strong>{acct.accountName}</strong>
+                            </div>
+                            <div className="account-actions">
+                              <button className="btn btn-icon" onClick={() => startEditAcct(acct)}><Edit3 size={14} /></button>
+                              <button className="btn btn-icon btn-danger" onClick={() => handleDeleteAccount(acct.id)}><Trash2 size={14} /></button>
+                            </div>
+                          </div>
+                          <div className="account-details">
+                            {acct.accountNumber && (
+                              <div>
+                                <label>Account #:</label>
+                                <span className="password-field">
+                                  {revealedFields.has(`${acct.id}-acct`) ? acct.accountNumber : maskValue(acct.accountNumber)}
+                                  <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-acct`)}>
+                                    {revealedFields.has(`${acct.id}-acct`) ? <EyeOff size={14} /> : <Eye size={14} />}
+                                  </button>
+                                </span>
+                              </div>
+                            )}
+                            {acct.routingNumber && (
+                              <div>
+                                <label>Routing #:</label>
+                                <span className="password-field">
+                                  {revealedFields.has(`${acct.id}-rtn`) ? acct.routingNumber : maskValue(acct.routingNumber)}
+                                  <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-rtn`)}>
+                                    {revealedFields.has(`${acct.id}-rtn`) ? <EyeOff size={14} /> : <Eye size={14} />}
+                                  </button>
+                                </span>
+                              </div>
+                            )}
+                            {acct.username && (
+                              <div>
+                                <label>Username:</label>
+                                <span className="password-field">
+                                  {revealedFields.has(`${acct.id}-user`) ? acct.username : maskValue(acct.username)}
+                                  <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-user`)}>
+                                    {revealedFields.has(`${acct.id}-user`) ? <EyeOff size={14} /> : <Eye size={14} />}
+                                  </button>
+                                </span>
+                              </div>
+                            )}
+                            {acct.passwordEncrypted && (
+                              <div>
+                                <label>Password:</label>
+                                <span className="password-field">
+                                  {revealedFields.has(`${acct.id}-pass`) ? acct.passwordEncrypted : '••••••••'}
+                                  <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-pass`)}>
+                                    {revealedFields.has(`${acct.id}-pass`) ? <EyeOff size={14} /> : <Eye size={14} />}
+                                  </button>
+                                </span>
+                              </div>
+                            )}
+                            {acct.url && <div><label>URL:</label> <a href={acct.url.startsWith('http') ? acct.url : `https://${acct.url}`} target="_blank" rel="noreferrer">{acct.url}</a></div>}
+                            {acct.estimatedValue && <div><label>Value:</label> <span>{acct.estimatedValue}</span></div>}
+                            {acct.beneficiary && <div><label>Beneficiary:</label> <span>{acct.beneficiary}</span></div>}
+                            {acct.contactName && <div><label>Contact:</label> <span>{acct.contactName} {acct.contactPhone ? `· ${acct.contactPhone}` : ''} {acct.contactEmail ? `· ${acct.contactEmail}` : ''}</span></div>}
+                            {acct.notes && <div><label>Notes:</label> <span>{acct.notes}</span></div>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="empty-state">
+                  <p>{categoryInstitutions.length > 0 ? 'Select an institution from the left panel.' : 'Add an institution to get started.'}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Institution Quick-Pick Modal */}
+      {showInstPicker && selectedCategoryId && (
+        <div className="modal-overlay" onClick={() => setShowInstPicker(false)}>
+          <div className="modal modal-large" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Choose a Type</h3>
+              <button className="btn btn-ghost" onClick={() => setShowInstPicker(false)}><X size={18} /></button>
+            </div>
+            <div className="preset-grid">
+              {(institutionPresets[selectedCategoryId] || ['Other']).map(preset => {
+                const PresetIcon = presetIcons[preset] || MoreHorizontal;
+                return (
+                  <button
+                    key={preset}
+                    className="preset-btn"
+                    onClick={() => {
+                      if (preset === 'Other') {
+                        setInstForm({ name: '', website: '', phone: '', notes: '' });
+                      } else {
+                        setInstForm({ name: preset, website: '', phone: '', notes: '' });
+                      }
+                      setShowInstPicker(false);
+                      setShowInstForm(true);
+                    }}
+                  >
+                    <PresetIcon size={24} />
+                    <span>{preset}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Institution Form Modal */}
+      {showInstForm && (
+        <div className="modal-overlay" onClick={() => setShowInstForm(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>{editingInst ? 'Edit Institution' : 'Add Institution'}</h3>
+              <button className="btn btn-ghost" onClick={() => setShowInstForm(false)}><X size={18} /></button>
+            </div>
+            <form onSubmit={handleAddInstitution}>
+              <div className="form-group">
+                <label>Institution Name *</label>
+                <input type="text" value={instForm.name} onChange={e => setInstForm(f => ({ ...f, name: e.target.value }))} required autoFocus />
+              </div>
+              <div className="form-group">
+                <label>Website</label>
+                <input type="text" value={instForm.website} onChange={e => setInstForm(f => ({ ...f, website: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label>Phone</label>
+                <input type="text" value={instForm.phone} onChange={e => setInstForm(f => ({ ...f, phone: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label>Notes</label>
+                <textarea value={instForm.notes} onChange={e => setInstForm(f => ({ ...f, notes: e.target.value }))} />
+              </div>
+              <div className="form-actions">
+                <button type="button" className="btn btn-ghost" onClick={() => setShowInstForm(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary">{editingInst ? 'Update' : 'Add'} Institution</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Account Form Modal */}
+      {showAcctForm && selectedCategoryId && (
+        <div className="modal-overlay" onClick={() => setShowAcctForm(false)}>
+          <div className="modal modal-large" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>{editingAcct ? `Edit ${itemLabelSingular}` : addItemLabel}</h3>
+              <button className="btn btn-ghost" onClick={() => setShowAcctForm(false)}><X size={18} /></button>
+            </div>
+            <form onSubmit={handleAddAccount}>
+              <div className="form-grid">
+                <div className="form-group">
+                  <label>{nameFieldLabel} *</label>
+                  <input type="text" value={acctForm.accountName} onChange={e => setAcctForm(f => ({ ...f, accountName: e.target.value }))} required />
+                </div>
+                <div className="form-group">
+                  <label>Type</label>
+                  <input type="text" value={acctForm.accountType} onChange={e => setAcctForm(f => ({ ...f, accountType: e.target.value }))} placeholder={config.typePlaceholder} />
+                </div>
+                {config.fields.map(field => {
+                  const formKey = fieldToFormKey[field.key] as keyof typeof acctForm;
+                  return (
+                    <div className="form-group" key={field.key}>
+                      <label>{field.label}</label>
+                      <input
+                        type={field.type || 'text'}
+                        value={acctForm[formKey]}
+                        onChange={e => setAcctForm(f => ({ ...f, [formKey]: e.target.value }))}
+                        placeholder={field.placeholder}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="form-group form-full">
+                <label>Notes</label>
+                <textarea value={acctForm.notes} onChange={e => setAcctForm(f => ({ ...f, notes: e.target.value }))} />
+              </div>
+              <div className="form-actions">
+                <button type="button" className="btn btn-ghost" onClick={() => setShowAcctForm(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary">{editingAcct ? 'Update' : 'Add'} {itemLabelSingular}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,0 +1,458 @@
+import {
+  Plus, ArrowLeft, Trash2, Edit3, ChevronDown, ChevronRight, Eye, EyeOff, X,
+  Landmark, Building2, Banknote, CreditCard, Wallet, PiggyBank, CircleDollarSign,
+  Shield, ShieldCheck, Heart, Car, Truck, Bike, Ship, Caravan, Sailboat, Waves,
+  Home, Building, TreePine, MapPin, Hotel, Castle,
+  Briefcase, Store, Users, Handshake, Scale,
+  Bitcoin, HardDrive, Globe, Image,
+  GraduationCap, BookOpen, School,
+  FileText, FileLock, FileCheck, FileSignature, FileHeart, ClipboardList,
+  Calculator, FileSpreadsheet,
+  Gem, Palette, Trophy, Guitar, Monitor, Armchair, Wine, Medal,
+  Tv, Music, ShoppingBag, Film, Cloud, Pen, Dumbbell, Newspaper, MoreHorizontal,
+  Mail, AtSign, Camera, Video, Database, Apple, Smartphone,
+  Zap, Flame, Droplets, Wifi, Phone, Lock, Scissors,
+  Stethoscope, Smile, Glasses, Pill, Cross, HeartPulse, Activity,
+  DollarSign, HandCoins, Gavel, UserCheck, UserPlus, Contact,
+  Church, Leaf, Ribbon,
+  type LucideIcon,
+} from 'lucide-react';
+
+export {
+  Plus, ArrowLeft, Trash2, Edit3, ChevronDown, ChevronRight, Eye, EyeOff, X,
+  Landmark, Building2, Banknote, CreditCard, Wallet, PiggyBank, CircleDollarSign,
+  Shield, ShieldCheck, Heart, Car, Truck, Bike, Ship, Caravan, Sailboat, Waves,
+  Home, Building, TreePine, MapPin, Hotel, Castle,
+  Briefcase, Store, Users, Handshake, Scale,
+  Bitcoin, HardDrive, Globe, Image,
+  GraduationCap, BookOpen, School,
+  FileText, FileLock, FileCheck, FileSignature, FileHeart, ClipboardList,
+  Calculator, FileSpreadsheet,
+  Gem, Palette, Trophy, Guitar, Monitor, Armchair, Wine, Medal,
+  Tv, Music, ShoppingBag, Film, Cloud, Pen, Dumbbell, Newspaper, MoreHorizontal,
+  Mail, AtSign, Camera, Video, Database, Apple, Smartphone,
+  Zap, Flame, Droplets, Wifi, Phone, Lock, Scissors,
+  Stethoscope, Smile, Glasses, Pill, Cross, HeartPulse, Activity,
+  DollarSign, HandCoins, Gavel, UserCheck, UserPlus, Contact,
+  Church, Leaf, Ribbon,
+};
+
+export type { LucideIcon };
+
+export interface FieldConfig {
+  key: string;
+  label: string;
+  type?: string;
+  placeholder?: string;
+}
+
+export const categoryFields: Record<string, { typePlaceholder: string; fields: FieldConfig[]; accountLabel?: string; addLabel?: string; nameLabel?: string }> = {
+  'bank-accounts': {
+    typePlaceholder: 'e.g. Checking, Savings, CD, Money Market',
+    fields: [
+      { key: 'accountNumber', label: 'Account Number' },
+      { key: 'routingNumber', label: 'Routing Number' },
+      { key: 'username', label: 'Login Username' },
+      { key: 'password', label: 'Login Password', type: 'password' },
+      { key: 'url', label: 'Website URL' },
+      { key: 'estimatedValue', label: 'Balance', placeholder: 'e.g. $50,000' },
+      { key: 'beneficiary', label: 'Beneficiary / POD' },
+      { key: 'contactName', label: 'Contact Name' },
+      { key: 'contactPhone', label: 'Contact Phone' },
+      { key: 'contactEmail', label: 'Contact Email', type: 'email' },
+    ],
+  },
+  'investment-accounts': {
+    typePlaceholder: 'e.g. Brokerage, Mutual Fund, Stock Account',
+    fields: [
+      { key: 'accountNumber', label: 'Account Number' },
+      { key: 'username', label: 'Login Username' },
+      { key: 'password', label: 'Login Password', type: 'password' },
+      { key: 'url', label: 'Website URL' },
+      { key: 'estimatedValue', label: 'Estimated Value', placeholder: 'e.g. $250,000' },
+      { key: 'beneficiary', label: 'Beneficiary / TOD' },
+      { key: 'contactName', label: 'Advisor / Broker Name' },
+      { key: 'contactPhone', label: 'Advisor Phone' },
+      { key: 'contactEmail', label: 'Advisor Email', type: 'email' },
+    ],
+  },
+  'retirement-accounts': {
+    typePlaceholder: 'e.g. 401(k), IRA, Roth IRA, Pension, 403(b)',
+    fields: [
+      { key: 'accountNumber', label: 'Account Number' },
+      { key: 'username', label: 'Login Username' },
+      { key: 'password', label: 'Login Password', type: 'password' },
+      { key: 'url', label: 'Website URL' },
+      { key: 'estimatedValue', label: 'Estimated Value', placeholder: 'e.g. $500,000' },
+      { key: 'beneficiary', label: 'Primary Beneficiary' },
+      { key: 'contactName', label: 'Plan Administrator / Advisor' },
+      { key: 'contactPhone', label: 'Contact Phone' },
+      { key: 'contactEmail', label: 'Contact Email', type: 'email' },
+    ],
+  },
+  'insurance-policies': {
+    typePlaceholder: 'e.g. Life, Health, Auto, Home, Umbrella, Long-Term Care',
+    fields: [
+      { key: 'accountNumber', label: 'Policy Number' },
+      { key: 'estimatedValue', label: 'Coverage Amount', placeholder: 'e.g. $500,000' },
+      { key: 'username', label: 'Login Username' },
+      { key: 'password', label: 'Login Password', type: 'password' },
+      { key: 'url', label: 'Website URL' },
+      { key: 'beneficiary', label: 'Beneficiary' },
+      { key: 'contactName', label: 'Agent Name' },
+      { key: 'contactPhone', label: 'Agent Phone' },
+      { key: 'contactEmail', label: 'Agent Email', type: 'email' },
+    ],
+  },
+  'real-estate': {
+    typePlaceholder: 'e.g. Primary Residence, Rental, Vacation Home, Land',
+    accountLabel: 'Properties',
+    addLabel: 'Add Property',
+    nameLabel: 'Property Name',
+    fields: [
+      { key: 'url', label: 'Street Address', placeholder: 'e.g. 123 Main St' },
+      { key: 'contactEmail', label: 'City, State, ZIP', placeholder: 'e.g. Austin, TX 78701' },
+      { key: 'accountNumber', label: 'Parcel / Property ID' },
+      { key: 'estimatedValue', label: 'Estimated Value', placeholder: 'e.g. $350,000' },
+      { key: 'routingNumber', label: 'Mortgage Account #' },
+      { key: 'beneficiary', label: 'Title Holder / Deed Names' },
+      { key: 'contactName', label: 'Agent / Property Manager' },
+      { key: 'contactPhone', label: 'Contact Phone' },
+      { key: 'username', label: 'Mortgage Portal Username' },
+      { key: 'password', label: 'Mortgage Portal Password', type: 'password' },
+    ],
+  },
+  'vehicles': {
+    typePlaceholder: 'e.g. Car, Truck, Boat, RV, Motorcycle',
+    accountLabel: 'Vehicles',
+    addLabel: 'Add Vehicle',
+    nameLabel: 'Vehicle Name',
+    fields: [
+      { key: 'accountNumber', label: 'VIN / Hull ID' },
+      { key: 'estimatedValue', label: 'Estimated Value', placeholder: 'e.g. $25,000' },
+      { key: 'routingNumber', label: 'Loan Account #' },
+      { key: 'beneficiary', label: 'Title Holder' },
+      { key: 'contactName', label: 'Lender / Dealer Contact' },
+      { key: 'contactPhone', label: 'Contact Phone' },
+      { key: 'contactEmail', label: 'Contact Email', type: 'email' },
+    ],
+  },
+  'business-interests': {
+    typePlaceholder: 'e.g. LLC, Corporation, Partnership, Sole Proprietorship',
+    fields: [
+      { key: 'accountNumber', label: 'EIN / Tax ID' },
+      { key: 'estimatedValue', label: 'Estimated Value', placeholder: 'e.g. $100,000' },
+      { key: 'beneficiary', label: 'Ownership / Partners' },
+      { key: 'contactName', label: 'Business Attorney / CPA' },
+      { key: 'contactPhone', label: 'Contact Phone' },
+      { key: 'contactEmail', label: 'Contact Email', type: 'email' },
+      { key: 'url', label: 'Website' },
+      { key: 'username', label: 'Login Username' },
+      { key: 'password', label: 'Login Password', type: 'password' },
+    ],
+  },
+  'digital-assets': {
+    typePlaceholder: 'e.g. Crypto Wallet, NFTs, Domain, Digital Store',
+    fields: [
+      { key: 'accountNumber', label: 'Wallet Address / Account ID' },
+      { key: 'username', label: 'Login Username' },
+      { key: 'password', label: 'Login Password', type: 'password' },
+      { key: 'url', label: 'Website / Exchange URL' },
+      { key: 'estimatedValue', label: 'Estimated Value', placeholder: 'e.g. $10,000' },
+      { key: 'routingNumber', label: 'Recovery Phrase / Seed (secure!)' },
+      { key: 'beneficiary', label: 'Designated Heir' },
+    ],
+  },
+  'debts-liabilities': {
+    typePlaceholder: 'e.g. Mortgage, Auto Loan, Credit Card, Student Loan, HELOC',
+    fields: [
+      { key: 'accountNumber', label: 'Account Number' },
+      { key: 'estimatedValue', label: 'Balance Owed', placeholder: 'e.g. $120,000' },
+      { key: 'routingNumber', label: 'Interest Rate', placeholder: 'e.g. 4.5%' },
+      { key: 'username', label: 'Login Username' },
+      { key: 'password', label: 'Login Password', type: 'password' },
+      { key: 'url', label: 'Payment Portal URL' },
+      { key: 'contactName', label: 'Lender Contact' },
+      { key: 'contactPhone', label: 'Contact Phone' },
+      { key: 'contactEmail', label: 'Contact Email', type: 'email' },
+    ],
+  },
+  'estate-documents': {
+    typePlaceholder: 'e.g. Will, Trust, Power of Attorney, Healthcare Directive',
+    fields: [
+      { key: 'accountNumber', label: 'Document Reference #' },
+      { key: 'estimatedValue', label: 'Date Executed', placeholder: 'e.g. 2024-01-15' },
+      { key: 'beneficiary', label: 'Named Parties / Beneficiaries' },
+      { key: 'contactName', label: 'Attorney Name' },
+      { key: 'contactPhone', label: 'Attorney Phone' },
+      { key: 'contactEmail', label: 'Attorney Email', type: 'email' },
+      { key: 'url', label: 'Digital Copy Location' },
+    ],
+  },
+  'tax-records': {
+    typePlaceholder: 'e.g. Federal Return, State Return, Business Return',
+    fields: [
+      { key: 'accountNumber', label: 'EIN / SSN (last 4)' },
+      { key: 'username', label: 'IRS/State Login Username' },
+      { key: 'password', label: 'Login Password', type: 'password' },
+      { key: 'url', label: 'Filing Portal URL' },
+      { key: 'contactName', label: 'CPA / Tax Preparer' },
+      { key: 'contactPhone', label: 'Contact Phone' },
+      { key: 'contactEmail', label: 'Contact Email', type: 'email' },
+    ],
+  },
+  'personal-property': {
+    typePlaceholder: 'e.g. Jewelry, Art, Collectibles, Antiques, Firearms',
+    fields: [
+      { key: 'accountNumber', label: 'Serial # / Appraisal ID' },
+      { key: 'estimatedValue', label: 'Appraised Value', placeholder: 'e.g. $15,000' },
+      { key: 'beneficiary', label: 'Intended Heir' },
+      { key: 'contactName', label: 'Appraiser / Insurance Agent' },
+      { key: 'contactPhone', label: 'Contact Phone' },
+      { key: 'contactEmail', label: 'Contact Email', type: 'email' },
+    ],
+  },
+  'subscriptions': {
+    typePlaceholder: 'e.g. Streaming, Software, Gym, Club Membership',
+    fields: [
+      { key: 'accountNumber', label: 'Member / Account ID' },
+      { key: 'username', label: 'Login Username' },
+      { key: 'password', label: 'Login Password', type: 'password' },
+      { key: 'url', label: 'Website URL' },
+      { key: 'estimatedValue', label: 'Monthly Cost', placeholder: 'e.g. $14.99/mo' },
+      { key: 'contactPhone', label: 'Support Phone' },
+    ],
+  },
+  'social-media': {
+    typePlaceholder: 'e.g. Email, Facebook, Instagram, Cloud Storage',
+    fields: [
+      { key: 'username', label: 'Username / Email' },
+      { key: 'password', label: 'Password', type: 'password' },
+      { key: 'url', label: 'URL' },
+      { key: 'accountNumber', label: 'Recovery Email / Phone' },
+      { key: 'routingNumber', label: '2FA Method', placeholder: 'e.g. Authenticator, SMS' },
+    ],
+  },
+  'utilities': {
+    typePlaceholder: 'e.g. Electric, Gas, Water, Internet, Phone, Trash',
+    fields: [
+      { key: 'accountNumber', label: 'Account Number' },
+      { key: 'username', label: 'Login Username' },
+      { key: 'password', label: 'Login Password', type: 'password' },
+      { key: 'url', label: 'Website URL' },
+      { key: 'estimatedValue', label: 'Monthly Cost', placeholder: 'e.g. $150/mo' },
+      { key: 'contactPhone', label: 'Support Phone' },
+    ],
+  },
+  'healthcare': {
+    typePlaceholder: 'e.g. Doctor, Dentist, Pharmacy, Specialist, HSA/FSA',
+    fields: [
+      { key: 'accountNumber', label: 'Member / Patient ID' },
+      { key: 'username', label: 'Portal Username' },
+      { key: 'password', label: 'Portal Password', type: 'password' },
+      { key: 'url', label: 'Patient Portal URL' },
+      { key: 'estimatedValue', label: 'HSA/FSA Balance', placeholder: 'e.g. $3,500' },
+      { key: 'contactName', label: 'Provider Name' },
+      { key: 'contactPhone', label: 'Office Phone' },
+      { key: 'contactEmail', label: 'Office Email', type: 'email' },
+    ],
+  },
+  'education': {
+    typePlaceholder: 'e.g. 529 Plan, Student Loan, Education Savings',
+    fields: [
+      { key: 'accountNumber', label: 'Account Number' },
+      { key: 'username', label: 'Login Username' },
+      { key: 'password', label: 'Login Password', type: 'password' },
+      { key: 'url', label: 'Website URL' },
+      { key: 'estimatedValue', label: 'Balance', placeholder: 'e.g. $25,000' },
+      { key: 'beneficiary', label: 'Beneficiary / Student' },
+      { key: 'contactName', label: 'Advisor / Servicer' },
+      { key: 'contactPhone', label: 'Contact Phone' },
+      { key: 'contactEmail', label: 'Contact Email', type: 'email' },
+    ],
+  },
+  'trusts-entities': {
+    typePlaceholder: 'e.g. Revocable Trust, Irrevocable Trust, Family LLC',
+    fields: [
+      { key: 'accountNumber', label: 'EIN / Tax ID' },
+      { key: 'estimatedValue', label: 'Estimated Value', placeholder: 'e.g. $1,000,000' },
+      { key: 'beneficiary', label: 'Trustees / Beneficiaries' },
+      { key: 'contactName', label: 'Attorney / Trustee' },
+      { key: 'contactPhone', label: 'Contact Phone' },
+      { key: 'contactEmail', label: 'Contact Email', type: 'email' },
+      { key: 'url', label: 'Document Location' },
+    ],
+  },
+  'emergency-contacts': {
+    typePlaceholder: 'e.g. Attorney, CPA, Financial Advisor, Executor, Family',
+    accountLabel: 'Contacts',
+    addLabel: 'Add Contact',
+    nameLabel: 'Contact Label',
+    fields: [
+      { key: 'contactName', label: 'Full Name' },
+      { key: 'contactPhone', label: 'Phone Number' },
+      { key: 'contactEmail', label: 'Email Address', type: 'email' },
+      { key: 'accountNumber', label: 'Relationship / Role' },
+      { key: 'url', label: 'Website' },
+    ],
+  },
+  'final-wishes': {
+    typePlaceholder: 'e.g. Funeral Home, Cemetery, Cremation, Organ Donation',
+    fields: [
+      { key: 'accountNumber', label: 'Policy / Pre-plan #' },
+      { key: 'estimatedValue', label: 'Pre-paid Amount', placeholder: 'e.g. $8,000' },
+      { key: 'contactName', label: 'Funeral Director / Contact' },
+      { key: 'contactPhone', label: 'Contact Phone' },
+      { key: 'contactEmail', label: 'Contact Email', type: 'email' },
+    ],
+  },
+};
+
+export const defaultFields: { typePlaceholder: string; fields: FieldConfig[]; accountLabel?: string; addLabel?: string; nameLabel?: string } = {
+  typePlaceholder: 'e.g. Account Type',
+  fields: [
+    { key: 'accountNumber', label: 'Account Number' },
+    { key: 'routingNumber', label: 'Routing Number' },
+    { key: 'username', label: 'Login Username' },
+    { key: 'password', label: 'Login Password', type: 'password' },
+    { key: 'url', label: 'Website URL' },
+    { key: 'estimatedValue', label: 'Estimated Value', placeholder: 'e.g. $50,000' },
+    { key: 'beneficiary', label: 'Beneficiary' },
+    { key: 'contactName', label: 'Contact Name' },
+    { key: 'contactPhone', label: 'Contact Phone' },
+    { key: 'contactEmail', label: 'Contact Email', type: 'email' },
+  ],
+};
+
+export const institutionPresets: Record<string, string[]> = {
+  'bank-accounts': ['Chase', 'Bank of America', 'Wells Fargo', 'Citibank', 'US Bank', 'Capital One', 'PNC Bank', 'TD Bank', 'Ally Bank', 'Marcus by Goldman Sachs', 'Discover Bank', 'Navy Federal', 'USAA', 'Charles Schwab', 'Local Credit Union', 'Other'],
+  'investment-accounts': ['Fidelity', 'Charles Schwab', 'Vanguard', 'TD Ameritrade', 'E*TRADE', 'Merrill Lynch', 'Morgan Stanley', 'Edward Jones', 'Robinhood', 'Wealthfront', 'Betterment', 'Interactive Brokers', 'Other'],
+  'retirement-accounts': ['Fidelity', 'Vanguard', 'Charles Schwab', 'TIAA', 'T. Rowe Price', 'Empower', 'Principal', 'John Hancock', 'ADP Retirement', 'Merrill Lynch', 'Edward Jones', 'Other'],
+  'insurance-policies': ['State Farm', 'Allstate', 'GEICO', 'Progressive', 'USAA', 'Liberty Mutual', 'Farmers', 'Nationwide', 'MetLife', 'Prudential', 'New York Life', 'Northwestern Mutual', 'Aflac', 'Humana', 'UnitedHealthcare', 'Blue Cross Blue Shield', 'Aetna', 'Other'],
+  'real-estate': ['Primary Residence', 'Rental Property', 'Vacation Home', 'Land / Lot', 'Commercial Property', 'Timeshare', 'Other'],
+  'vehicles': ['Car', 'Truck', 'SUV', 'Motorcycle', 'Boat', 'RV / Camper', 'ATV / UTV', 'Jet Ski', 'Trailer', 'Classic / Antique Car', 'Other'],
+  'business-interests': ['LLC', 'S-Corp', 'C-Corp', 'Sole Proprietorship', 'Partnership', 'Franchise', 'Non-Profit', 'Other'],
+  'digital-assets': ['Coinbase', 'Binance', 'Kraken', 'Crypto.com', 'Ledger Wallet', 'Trezor Wallet', 'MetaMask', 'PayPal Crypto', 'Domain Names', 'Digital Storefront', 'NFT Collection', 'Other'],
+  'debts-liabilities': ['Mortgage', 'Auto Loan', 'Student Loan', 'Credit Card', 'Personal Loan', 'HELOC', 'Medical Debt', 'Business Loan', 'Other'],
+  'estate-documents': ['Last Will & Testament', 'Revocable Living Trust', 'Power of Attorney', 'Healthcare Directive', 'HIPAA Authorization', 'Beneficiary Designations', 'Guardianship Designation', 'Letter of Intent', 'Other'],
+  'tax-records': ['Federal Tax Return', 'State Tax Return', 'Business Tax Return', 'Property Tax', 'CPA / Tax Preparer', 'Other'],
+  'personal-property': ['Jewelry', 'Fine Art', 'Collectibles', 'Antiques', 'Firearms', 'Musical Instruments', 'Electronics', 'Furniture', 'Wine / Spirits Collection', 'Sports Memorabilia', 'Other'],
+  'subscriptions': ['Netflix', 'Spotify', 'Amazon Prime', 'Disney+', 'YouTube Premium', 'Apple One', 'Hulu', 'HBO Max', 'Adobe Creative Cloud', 'Microsoft 365', 'Gym Membership', 'Club Membership', 'Newspaper / Magazine', 'Other'],
+  'social-media': ['Gmail', 'Outlook / Hotmail', 'Yahoo Mail', 'iCloud', 'Facebook', 'Instagram', 'X / Twitter', 'LinkedIn', 'TikTok', 'YouTube', 'Google Drive', 'Dropbox', 'OneDrive', 'Apple ID', 'Other'],
+  'utilities': ['Electric', 'Gas', 'Water / Sewer', 'Internet', 'Cell Phone', 'Home Phone', 'Cable / Satellite TV', 'Trash / Recycling', 'HOA', 'Security System', 'Lawn / Landscaping', 'Other'],
+  'healthcare': ['Primary Doctor', 'Dentist', 'Eye Doctor', 'Specialist', 'Pharmacy', 'Hospital', 'Health Insurance', 'Dental Insurance', 'Vision Insurance', 'HSA Account', 'FSA Account', 'Medicare', 'Other'],
+  'education': ['529 Plan', 'Coverdell ESA', 'Student Loan - Federal', 'Student Loan - Private', 'Scholarship Fund', 'Other'],
+  'trusts-entities': ['Revocable Living Trust', 'Irrevocable Trust', 'Family LLC', 'Family Foundation', 'Charitable Trust', 'Special Needs Trust', 'Other'],
+  'emergency-contacts': ['Attorney', 'CPA / Accountant', 'Financial Advisor', 'Insurance Agent', 'Executor', 'Trustee', 'Guardian', 'Spouse / Partner', 'Family Member', 'Close Friend', 'Neighbor', 'Doctor', 'Other'],
+  'final-wishes': ['Funeral Home', 'Cemetery', 'Crematorium', 'Church / Place of Worship', 'Organ Donation Registry', 'Pre-paid Burial Plan', 'Other'],
+};
+
+export const presetIcons: Record<string, LucideIcon> = {
+  // Banks
+  'Chase': Landmark, 'Bank of America': Building2, 'Wells Fargo': Banknote, 'Citibank': CreditCard,
+  'US Bank': Landmark, 'Capital One': CreditCard, 'PNC Bank': Landmark, 'TD Bank': Building2,
+  'Ally Bank': Wallet, 'Marcus by Goldman Sachs': CircleDollarSign, 'Discover Bank': CreditCard,
+  'Navy Federal': Shield, 'USAA': Shield, 'Charles Schwab': CircleDollarSign, 'Local Credit Union': Users,
+  // Investments
+  'Fidelity': CircleDollarSign, 'Vanguard': CircleDollarSign, 'TD Ameritrade': CircleDollarSign,
+  'E*TRADE': CircleDollarSign, 'Merrill Lynch': Building2, 'Morgan Stanley': Building2,
+  'Edward Jones': Briefcase, 'Robinhood': Leaf, 'Wealthfront': CircleDollarSign,
+  'Betterment': CircleDollarSign, 'Interactive Brokers': CircleDollarSign,
+  // Retirement
+  'TIAA': PiggyBank, 'T. Rowe Price': PiggyBank, 'Empower': PiggyBank,
+  'Principal': PiggyBank, 'John Hancock': PiggyBank, 'ADP Retirement': PiggyBank,
+  // Insurance
+  'State Farm': Shield, 'Allstate': Shield, 'GEICO': Shield, 'Progressive': Shield,
+  'Liberty Mutual': Shield, 'Farmers': Shield, 'Nationwide': Shield,
+  'MetLife': Shield, 'Prudential': Shield, 'New York Life': Heart,
+  'Northwestern Mutual': Shield, 'Aflac': HeartPulse, 'Humana': HeartPulse,
+  'UnitedHealthcare': HeartPulse, 'Blue Cross Blue Shield': HeartPulse, 'Aetna': HeartPulse,
+  // Real Estate
+  'Primary Residence': Home, 'Rental Property': Building, 'Vacation Home': Hotel,
+  'Land / Lot': TreePine, 'Commercial Property': Building2, 'Timeshare': Castle,
+  // Vehicles
+  'Car': Car, 'Truck': Truck, 'SUV': Car, 'Motorcycle': Bike, 'Boat': Ship,
+  'RV / Camper': Caravan, 'ATV / UTV': Bike, 'Jet Ski': Waves,
+  'Trailer': Caravan, 'Classic / Antique Car': Car, 'Sailboat': Sailboat,
+  // Business
+  'LLC': Briefcase, 'S-Corp': Building2, 'C-Corp': Building2,
+  'Sole Proprietorship': Store, 'Partnership': Handshake, 'Franchise': Store,
+  'Non-Profit': Heart,
+  // Digital
+  'Coinbase': Bitcoin, 'Binance': Bitcoin, 'Kraken': Bitcoin, 'Crypto.com': Bitcoin,
+  'Ledger Wallet': HardDrive, 'Trezor Wallet': HardDrive, 'MetaMask': Wallet,
+  'PayPal Crypto': Wallet, 'Domain Names': Globe, 'Digital Storefront': Store,
+  'NFT Collection': Image,
+  // Debts
+  'Mortgage': Home, 'Auto Loan': Car, 'Student Loan': GraduationCap,
+  'Credit Card': CreditCard, 'Personal Loan': Banknote, 'HELOC': Home,
+  'Medical Debt': HeartPulse, 'Business Loan': Briefcase,
+  // Estate Documents
+  'Last Will & Testament': FileText, 'Revocable Living Trust': FileLock,
+  'Power of Attorney': FileSignature, 'Healthcare Directive': FileHeart,
+  'HIPAA Authorization': FileCheck, 'Beneficiary Designations': ClipboardList,
+  'Guardianship Designation': UserCheck, 'Letter of Intent': FileText,
+  // Tax
+  'Federal Tax Return': FileSpreadsheet, 'State Tax Return': FileSpreadsheet,
+  'Business Tax Return': Calculator, 'Property Tax': Home, 'CPA / Tax Preparer': Calculator,
+  // Personal Property
+  'Jewelry': Gem, 'Fine Art': Palette, 'Collectibles': Trophy,
+  'Antiques': Armchair, 'Firearms': Shield, 'Musical Instruments': Guitar,
+  'Electronics': Monitor, 'Furniture': Armchair, 'Wine / Spirits Collection': Wine,
+  'Sports Memorabilia': Medal,
+  // Subscriptions
+  'Netflix': Tv, 'Spotify': Music, 'Amazon Prime': ShoppingBag, 'Disney+': Film,
+  'YouTube Premium': Video, 'Apple One': Apple, 'Hulu': Tv, 'HBO Max': Film,
+  'Adobe Creative Cloud': Pen, 'Microsoft 365': Cloud,
+  'Gym Membership': Dumbbell, 'Club Membership': Users,
+  'Newspaper / Magazine': Newspaper,
+  // Social Media
+  'Gmail': Mail, 'Outlook / Hotmail': Mail, 'Yahoo Mail': Mail, 'iCloud': Cloud,
+  'Facebook': Users, 'Instagram': Camera, 'X / Twitter': AtSign,
+  'LinkedIn': Briefcase, 'TikTok': Music, 'YouTube': Video,
+  'Google Drive': Database, 'Dropbox': Database, 'OneDrive': Cloud,
+  'Apple ID': Apple,
+  // Utilities
+  'Electric': Zap, 'Gas': Flame, 'Water / Sewer': Droplets,
+  'Internet': Wifi, 'Cell Phone': Smartphone, 'Home Phone': Phone,
+  'Cable / Satellite TV': Tv, 'Trash / Recycling': Trash2,
+  'HOA': Home, 'Security System': Lock, 'Lawn / Landscaping': Scissors,
+  // Healthcare
+  'Primary Doctor': Stethoscope, 'Dentist': Smile, 'Eye Doctor': Glasses,
+  'Specialist': Activity, 'Pharmacy': Pill, 'Hospital': Cross,
+  'Health Insurance': HeartPulse, 'Dental Insurance': Smile,
+  'Vision Insurance': Glasses, 'HSA Account': Wallet, 'FSA Account': Wallet,
+  'Medicare': HeartPulse,
+  // Education
+  '529 Plan': GraduationCap, 'Coverdell ESA': BookOpen,
+  'Student Loan - Federal': GraduationCap, 'Student Loan - Private': GraduationCap,
+  'Scholarship Fund': School,
+  // Trusts
+  'Irrevocable Trust': FileLock,
+  'Family LLC': Users, 'Family Foundation': Heart,
+  'Charitable Trust': Heart, 'Special Needs Trust': HeartPulse,
+  // Emergency Contacts
+  'Attorney': Gavel, 'CPA / Accountant': Calculator, 'Financial Advisor': DollarSign,
+  'Insurance Agent': Shield, 'Executor': UserCheck, 'Trustee': Scale,
+  'Guardian': UserPlus, 'Spouse / Partner': Heart, 'Family Member': Users,
+  'Close Friend': Contact, 'Neighbor': Home, 'Doctor': Stethoscope,
+  // Final Wishes
+  'Funeral Home': Building, 'Cemetery': MapPin, 'Crematorium': Flame,
+  'Church / Place of Worship': Church, 'Organ Donation Registry': Ribbon,
+  'Pre-paid Burial Plan': HandCoins,
+  // Fallback
+  'Other': MoreHorizontal,
+};
+
+export const fieldToFormKey: Record<string, string> = {
+  accountNumber: 'accountNumber',
+  routingNumber: 'routingNumber',
+  username: 'username',
+  password: 'password',
+  url: 'url',
+  estimatedValue: 'estimatedValue',
+  beneficiary: 'beneficiary',
+  contactName: 'contactName',
+  contactPhone: 'contactPhone',
+  contactEmail: 'contactEmail',
+};
