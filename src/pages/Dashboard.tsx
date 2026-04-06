@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import {
-  CATEGORIES, getInstitutions, getAccounts, getStats,
+  CATEGORIES, getInstitutions, getAccounts,
   addInstitution, updateInstitution, deleteInstitution,
   addAccount, updateAccount, deleteAccount,
 } from '../lib/storage';
@@ -85,6 +85,14 @@ export default function Dashboard() {
   // Can only add/edit when viewing only own data
   const isOwnDataOnly = activeUserIds.size === 1 && activeUserIds.has(user?.id || '');
 
+  // Filter dropdown
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+
+  // Members list: always include self even if householdMembers is empty
+  const allMembers = (user?.householdMembers && user.householdMembers.length > 0)
+    ? user.householdMembers
+    : user ? [{ id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName, photoURL: user.photoURL }] : [];
+
   // Navigation state
   const [selectedRoot, setSelectedRoot] = useState<number | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
@@ -93,7 +101,8 @@ export default function Dashboard() {
   // Data state
   const [institutions, setInstitutions] = useState<InstitutionWithOwner[]>([]);
   const [accounts, setAccounts] = useState<AccountWithOwner[]>([]);
-  const [stats, setStats] = useState<any>(null);
+  const [allInstitutions, setAllInstitutions] = useState<InstitutionWithOwner[]>([]);
+  const [allAccounts, setAllAccounts] = useState<AccountWithOwner[]>([]);
   // Modal state
   const [showInstPicker, setShowInstPicker] = useState(false);
   const [showInstForm, setShowInstForm] = useState(false);
@@ -125,27 +134,46 @@ export default function Dashboard() {
   const selectedInstitution = categoryInstitutions.find(i => i.id === selectedInstitutionId) || null;
   const institutionAccounts = accounts.filter(a => a.institutionId === selectedInstitutionId && activeUserIds.has(a.userId));
 
-  // Load root-level counts
-  const loadRootCounts = useCallback(async () => {
+  // Filtered counts based on activeUserIds
+  const filteredInsts = allInstitutions.filter(i => activeUserIds.has(i.userId));
+  const filteredAccts = allAccounts.filter(a => activeUserIds.has(a.userId));
+
+  const getCategoryCounts = (catId: string) => {
+    const instCount = filteredInsts.filter(i => i.categoryId === catId).length;
+    const catInstIds = new Set(filteredInsts.filter(i => i.categoryId === catId).map(i => i.id));
+    const acctCount = filteredAccts.filter(a => catInstIds.has(a.institutionId)).length;
+    return { instCount, acctCount };
+  };
+
+  // Load all household data for counts
+  const loadAllData = useCallback(async () => {
     if (!user) return;
-    const s = await getStats(user.id);
-    setStats(s);
+    const [insts, accts] = await Promise.all([
+      getInstitutions(user.id),
+      getAccounts(user.id),
+    ]);
+    setAllInstitutions(insts);
+    setAllAccounts(accts);
   }, [user]);
 
   // Load institutions and accounts for the selected category
   const loadCategoryData = useCallback(async () => {
     if (!user || !selectedCategoryId) return;
-    const [insts, accts] = await Promise.all([
+    const [insts, accts, allInsts, allAccts] = await Promise.all([
       getInstitutions(user.id, selectedCategoryId),
+      getAccounts(user.id),
+      getInstitutions(user.id),
       getAccounts(user.id),
     ]);
     setInstitutions(insts);
     setAccounts(accts);
+    setAllInstitutions(allInsts);
+    setAllAccounts(allAccts);
   }, [user, selectedCategoryId]);
 
   useEffect(() => {
-    loadRootCounts();
-  }, [loadRootCounts]);
+    loadAllData();
+  }, [loadAllData]);
 
   useEffect(() => {
     if (selectedCategoryId) {
@@ -223,7 +251,7 @@ export default function Dashboard() {
     resetInstForm();
     setShowInstForm(false);
     await loadCategoryData();
-    await loadRootCounts();
+    await loadAllData();
   };
 
   const handleDeleteInstitution = async (id: string) => {
@@ -233,7 +261,7 @@ export default function Dashboard() {
       setSelectedInstitutionId(null);
     }
     await loadCategoryData();
-    await loadRootCounts();
+    await loadAllData();
   };
 
   const startEditInst = (inst: Institution) => {
@@ -271,14 +299,14 @@ export default function Dashboard() {
     resetAcctForm();
     setShowAcctForm(false);
     await loadCategoryData();
-    await loadRootCounts();
+    await loadAllData();
   };
 
   const handleDeleteAccount = async (id: string) => {
     if (!confirm(`Delete this ${itemLabelSingular.toLowerCase()}?`)) return;
     await deleteAccount(id);
     await loadCategoryData();
-    await loadRootCounts();
+    await loadAllData();
   };
 
   const startEditAcct = (acct: Account) => {
@@ -300,28 +328,51 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard">
-      {/* User Filter Header */}
+      {/* Dashboard Header */}
       <div className="dash-header">
         <h2>Dashboard</h2>
-        <div className="user-filters">
-          <span className="user-filter-label">Viewing:</span>
-          {(user?.householdMembers || []).map(member => {
-            const mInitials = `${member.firstName?.[0] || ''}${member.lastName?.[0] || ''}`.toUpperCase();
-            const isMe = member.id === user?.id;
-            return (
-              <button
-                key={member.id}
-                className={`user-chip${activeUserIds.has(member.id) ? ' active' : ''}`}
-                onClick={() => toggleUserFilter(member.id)}
-              >
-                {member.photoURL
-                  ? <img src={member.photoURL} alt="" className="user-chip-avatar" />
-                  : <span className="user-chip-initials">{mInitials}</span>
-                }
-                {member.firstName}{isMe ? ' (You)' : ''}
-              </button>
-            );
-          })}
+        <div className="filter-wrapper">
+          <button className="btn btn-filter" onClick={() => setShowFilterDropdown(!showFilterDropdown)}>
+            <Icons.Filter size={16} />
+            Filter
+            {activeUserIds.size < allMembers.length && (
+              <span className="filter-badge">{activeUserIds.size}</span>
+            )}
+          </button>
+          {showFilterDropdown && (
+            <>
+              <div className="filter-backdrop" onClick={() => setShowFilterDropdown(false)} />
+              <div className="filter-dropdown">
+                <div className="filter-dropdown-header">
+                  <span>Filter by Member</span>
+                  <button className="btn btn-ghost btn-sm" onClick={() => {
+                    setActiveUserIds(new Set(allMembers.map(m => m.id)));
+                  }}>Select All</button>
+                </div>
+                {allMembers.map(member => {
+                  const mInitials = `${member.firstName?.[0] || ''}${member.lastName?.[0] || ''}`.toUpperCase();
+                  const isMe = member.id === user?.id;
+                  const isActive = activeUserIds.has(member.id);
+                  return (
+                    <div
+                      key={member.id}
+                      className={`filter-item${isActive ? ' active' : ''}`}
+                      onClick={() => toggleUserFilter(member.id)}
+                    >
+                      <div className="filter-item-check">
+                        {isActive && <Icons.Check size={14} />}
+                      </div>
+                      {member.photoURL
+                        ? <img src={member.photoURL} alt="" className="filter-item-avatar" />
+                        : <span className="filter-item-initials">{mInitials}</span>
+                      }
+                      <span>{member.firstName} {member.lastName}{isMe ? ' (You)' : ''}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -329,14 +380,12 @@ export default function Dashboard() {
       <div className="root-cards-grid">
         {rootCategories.map((root, idx) => {
           const RootIcon = root.icon;
-          const rootInsts = stats ? root.categoryIds.reduce((sum: number, catId: string) => {
-            const cat = stats.categoryCounts.find((c: any) => c.id === catId);
-            return sum + (cat ? cat.institution_count : 0);
-          }, 0) : 0;
-          const rootAccts = stats ? root.categoryIds.reduce((sum: number, catId: string) => {
-            const cat = stats.categoryCounts.find((c: any) => c.id === catId);
-            return sum + (cat ? cat.account_count : 0);
-          }, 0) : 0;
+          let rootInsts = 0, rootAccts = 0;
+          root.categoryIds.forEach(catId => {
+            const c = getCategoryCounts(catId);
+            rootInsts += c.instCount;
+            rootAccts += c.acctCount;
+          });
           return (
             <div
               key={root.name}
@@ -363,9 +412,7 @@ export default function Dashboard() {
               const cat = CATEGORIES.find(c => c.id === catId);
               if (!cat) return null;
               const CatIcon = iconMap[cat.icon] || Icons.Folder;
-              const catStat = stats?.categoryCounts?.find((c: any) => c.id === catId);
-              const instCount = catStat?.institution_count || 0;
-              const acctCount = catStat?.account_count || 0;
+              const { instCount, acctCount } = getCategoryCounts(catId);
               const isSelected = selectedCategoryId === catId;
               return (
                 <div
