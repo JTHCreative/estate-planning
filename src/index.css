@@ -517,6 +517,19 @@ a:hover { text-decoration: underline; }
   border-color: var(--primary-alpha-25);
 }
 
+.category-tile.selected {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.category-tile.selected .category-tile-icon { color: #fff; }
+.category-tile.selected .category-tile-name { color: #fff; }
+.category-tile.selected .category-tile-count {
+  background: rgba(255,255,255,0.2);
+  color: #fff;
+}
+
 .category-tile-icon {
   color: var(--text-muted);
   transition: color 0.2s;
