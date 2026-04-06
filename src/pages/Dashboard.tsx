@@ -704,7 +704,31 @@ export default function Dashboard() {
                 </div>
                 <div className="form-group">
                   <label>Type</label>
-                  <input type="text" value={acctForm.accountType} onChange={e => setAcctForm(f => ({ ...f, accountType: e.target.value }))} placeholder={config.typePlaceholder} />
+                  {config.typeOptions && (config.typeOptions.includes(acctForm.accountType) || acctForm.accountType === '') ? (
+                    <select value={acctForm.accountType} onChange={e => {
+                      const val = e.target.value;
+                      if (val === '__other') {
+                        setAcctForm(f => ({ ...f, accountType: ' ' }));
+                      } else {
+                        setAcctForm(f => ({ ...f, accountType: val }));
+                      }
+                    }}>
+                      <option value="">Select type...</option>
+                      {config.typeOptions.map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                      <option value="__other">Other...</option>
+                    </select>
+                  ) : config.typeOptions ? (
+                    <div className="custom-type-input">
+                      <input type="text" value={acctForm.accountType} onChange={e => setAcctForm(f => ({ ...f, accountType: e.target.value }))} placeholder="Enter custom type..." autoFocus />
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => setAcctForm(f => ({ ...f, accountType: '' }))}>
+                        <Icons.ChevronDown size={14} /> List
+                      </button>
+                    </div>
+                  ) : (
+                    <input type="text" value={acctForm.accountType} onChange={e => setAcctForm(f => ({ ...f, accountType: e.target.value }))} placeholder={config.typePlaceholder} />
+                  )}
                 </div>
                 {config.fields.map(field => {
                   const formKey = fieldToFormKey[field.key] as keyof typeof acctForm;
