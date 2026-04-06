@@ -466,6 +466,10 @@ a:hover { text-decoration: underline; }
 .acct-panel {
   flex: 1;
   min-width: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
 }
 
 .acct-panel-header {
@@ -478,9 +482,6 @@ a:hover { text-decoration: underline; }
 .acct-panel-header h4 { font-size: 20px; font-weight: 600; }
 
 .acct-panel-empty {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
   padding: 48px 24px;
   text-align: center;
   color: var(--text-muted);
@@ -518,8 +519,8 @@ a:hover { text-decoration: underline; }
 }
 
 .category-tile.selected {
-  background: var(--primary);
-  border-color: var(--primary);
+  background: #9e3f2a;
+  border-color: #9e3f2a;
   color: #fff;
 }
 
