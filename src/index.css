@@ -36,12 +36,12 @@
   --border: #d5cdc4;
   --text: #2d2420;
   --text-muted: #7a6e64;
-  --primary: #d4684f;
-  --primary-hover: #c05a42;
-  --primary-alpha-10: rgba(212,104,79,0.08);
-  --primary-alpha-12: rgba(212,104,79,0.1);
-  --primary-alpha-15: rgba(212,104,79,0.12);
-  --primary-alpha-25: rgba(212,104,79,0.2);
+  --primary: #b8503a;
+  --primary-hover: #a3442f;
+  --primary-alpha-10: rgba(184,80,58,0.1);
+  --primary-alpha-12: rgba(184,80,58,0.12);
+  --primary-alpha-15: rgba(184,80,58,0.15);
+  --primary-alpha-25: rgba(184,80,58,0.22);
   --danger: #d43c3c;
   --danger-hover: #c02e2e;
   --danger-alpha: rgba(212,60,60,0.08);
