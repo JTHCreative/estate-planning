@@ -122,6 +122,10 @@ export default function Dashboard() {
   // Derived: selected category object
   const selectedCategory = selectedCategoryId ? CATEGORIES.find(c => c.id === selectedCategoryId) || null : null;
   const config = selectedCategoryId ? (categoryFields[selectedCategoryId] || defaultFields) : defaultFields;
+  const instLabel = config.institutionLabel || 'Institutions';
+  const instLabelSingular = instLabel.endsWith('s') ? instLabel.slice(0, -1) : instLabel;
+  const addInstLabel = config.addInstitutionLabel || 'Add Institution';
+  const instNameFieldLabel = config.institutionNameLabel || 'Institution Name';
   const itemLabel = config.accountLabel || 'Accounts';
   const itemLabelSingular = itemLabel.endsWith('s') ? itemLabel.slice(0, -1) : itemLabel;
   const addItemLabel = config.addLabel || 'Add Account';
@@ -253,7 +257,7 @@ export default function Dashboard() {
   };
 
   const handleDeleteInstitution = async (id: string) => {
-    if (!confirm(`Delete this institution and all its ${itemLabel.toLowerCase()}?`)) return;
+    if (!confirm(`Delete this ${instLabelSingular.toLowerCase()} and all its ${itemLabel.toLowerCase()}?`)) return;
     await deleteInstitution(id);
     if (selectedInstitutionId === id) {
       setSelectedInstitutionId(null);
@@ -420,10 +424,19 @@ export default function Dashboard() {
                 >
                   <div className="category-tile-icon"><CatIcon size={28} /></div>
                   <span className="category-tile-name">{cat.name}</span>
-                  <div className="category-tile-counts">
-                    <span>{instCount} {instCount === 1 ? 'Institution' : 'Institutions'}</span>
-                    <span>{acctCount} {acctCount === 1 ? 'Account' : 'Accounts'}</span>
-                  </div>
+                  {(() => {
+                    const catConfig = categoryFields[catId] || defaultFields;
+                    const catInstLabel = catConfig.institutionLabel || 'Institutions';
+                    const catInstSingular = catInstLabel.endsWith('s') ? catInstLabel.slice(0, -1) : catInstLabel;
+                    const catAcctLabel = catConfig.accountLabel || 'Accounts';
+                    const catAcctSingular = catAcctLabel.endsWith('s') ? catAcctLabel.slice(0, -1) : catAcctLabel;
+                    return (
+                      <div className="category-tile-counts">
+                        <span>{instCount} {instCount === 1 ? catInstSingular : catInstLabel}</span>
+                        <span>{acctCount} {acctCount === 1 ? catAcctSingular : catAcctLabel}</span>
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })}
@@ -439,14 +452,14 @@ export default function Dashboard() {
             {/* Left: Institution Panel */}
             <div className="inst-panel">
               <div className="inst-panel-header">
-                <h4>Institutions</h4>
+                <h4>{instLabel}</h4>
                 <button className="btn btn-sm btn-primary" onClick={() => { resetInstForm(); setEditingInst(null); setShowInstPicker(true); }}>
                   <Plus size={14} /> Add
                 </button>
               </div>
               {categoryInstitutions.length === 0 ? (
                 <div className="inst-panel-empty">
-                  <p>No institutions yet.</p>
+                  <p>No {instLabel.toLowerCase()} yet.</p>
                   <p className="hint">Click "+ Add" to get started.</p>
                 </div>
               ) : (
@@ -611,7 +624,7 @@ export default function Dashboard() {
                 </>
               ) : (
                 <div className="empty-state">
-                  <p>{categoryInstitutions.length > 0 ? 'Select an institution from the left panel.' : 'Add an institution to get started.'}</p>
+                  <p>{categoryInstitutions.length > 0 ? `Select ${instLabelSingular === instLabel ? 'an' : 'a'} ${instLabelSingular.toLowerCase()} from the left panel.` : `Add ${instLabelSingular === instLabel ? 'an' : 'a'} ${instLabelSingular.toLowerCase()} to get started.`}</p>
                 </div>
               )}
             </div>
@@ -659,12 +672,12 @@ export default function Dashboard() {
         <div className="modal-overlay" onClick={() => setShowInstForm(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>{editingInst ? 'Edit Institution' : 'Add Institution'}</h3>
+              <h3>{editingInst ? `Edit ${instLabelSingular}` : addInstLabel}</h3>
               <button className="btn btn-ghost" onClick={() => setShowInstForm(false)}><X size={18} /></button>
             </div>
             <form onSubmit={handleAddInstitution}>
               <div className="form-group">
-                <label>Institution Name *</label>
+                <label>{instNameFieldLabel} *</label>
                 <input type="text" value={instForm.name} onChange={e => setInstForm(f => ({ ...f, name: e.target.value }))} required autoFocus />
               </div>
               <div className="form-group">
@@ -681,7 +694,7 @@ export default function Dashboard() {
               </div>
               <div className="form-actions">
                 <button type="button" className="btn btn-ghost" onClick={() => setShowInstForm(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary">{editingInst ? 'Update' : 'Add'} Institution</button>
+                <button type="submit" className="btn btn-primary">{editingInst ? 'Update' : 'Add'} {instLabelSingular}</button>
               </div>
             </form>
           </div>
