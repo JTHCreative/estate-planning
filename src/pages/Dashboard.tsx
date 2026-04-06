@@ -528,11 +528,19 @@ export default function Dashboard() {
                     </div>
                   ) : (
                     <div className="accounts-list">
-                      {institutionAccounts.map(acct => (
+                      {institutionAccounts.map(acct => {
+                        const acctOwner = allMembers.find(m => m.id === acct.userId);
+                        const acctInitials = acct.ownerName.split(' ').map(n => n[0]).join('');
+                        return (
                         <div key={acct.id} className="account-card">
                           <div className="account-header">
                             <div className="account-header-info">
-                              <div className="account-owner-avatar">{acct.ownerName.split(' ').map(n => n[0]).join('')}</div>
+                              <div className="account-owner-avatar">
+                                {acctOwner?.photoURL
+                                  ? <img src={acctOwner.photoURL} alt="" />
+                                  : acctInitials
+                                }
+                              </div>
                               <span className="account-owner-name">{acct.ownerName}</span>
                               {acct.accountType && <span className="badge">{acct.accountType}</span>}
                               <strong>{acct.accountName}</strong>
@@ -596,7 +604,8 @@ export default function Dashboard() {
                             {acct.notes && <div><label>Notes:</label> <span>{acct.notes}</span></div>}
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </>
