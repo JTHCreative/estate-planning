@@ -1,9 +1,11 @@
 import { useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Link2, Unlink, Copy, Check, Camera, X } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
+import { Link2, Unlink, Copy, Check, Camera, X, Sun, Moon } from 'lucide-react';
 
 export default function Settings() {
   const { user, doLinkPartner, doUnlinkPartner, updatePhoto } = useAuth();
+  const { theme, setTheme } = useTheme();
   const [partnerCode, setPartnerCode] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -113,6 +115,27 @@ export default function Settings() {
             <div><label>Name:</label> <span>{user?.firstName} {user?.lastName}</span></div>
             <div><label>Email:</label> <span>{user?.email}</span></div>
           </div>
+        </div>
+      </div>
+
+      <div className="settings-section">
+        <h3>Appearance</h3>
+        <p className="section-desc">Choose your preferred color theme.</p>
+        <div className="theme-toggle">
+          <button
+            className={`theme-option ${theme === 'light' ? 'active' : ''}`}
+            onClick={() => setTheme('light')}
+          >
+            <Sun size={20} />
+            <span>Light</span>
+          </button>
+          <button
+            className={`theme-option ${theme === 'dark' ? 'active' : ''}`}
+            onClick={() => setTheme('dark')}
+          >
+            <Moon size={20} />
+            <span>Dark</span>
+          </button>
         </div>
       </div>
 

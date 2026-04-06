@@ -1,5 +1,6 @@
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -23,6 +24,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
+    <ThemeProvider>
     <HashRouter>
       <AuthProvider>
         <Routes>
@@ -36,5 +38,6 @@ export default function App() {
         </Routes>
       </AuthProvider>
     </HashRouter>
+    </ThemeProvider>
   );
 }
