@@ -153,11 +153,6 @@ export default function Dashboard() {
     setRevealedFields(new Set());
   };
 
-  const handleBackToRoot = () => {
-    setSelectedCategoryId(null);
-    setSelectedInstitutionId(null);
-    setRevealedFields(new Set());
-  };
 
   // Handlers: field masking
   const toggleField = (key: string) => {
@@ -301,7 +296,7 @@ export default function Dashboard() {
       </div>
 
       {/* Subcategory Section */}
-      {selectedRoot !== null && selectedRootCategory && !selectedCategoryId && (
+      {selectedRoot !== null && selectedRootCategory && (
         <div className="subcategory-section">
           <h3>{selectedRootCategory.name}</h3>
           <div className="category-tile-grid">
@@ -312,10 +307,11 @@ export default function Dashboard() {
               const catStat = stats?.categoryCounts?.find((c: any) => c.id === catId);
               const instCount = catStat?.institution_count || 0;
               const acctCount = catStat?.account_count || 0;
+              const isSelected = selectedCategoryId === catId;
               return (
                 <div
                   key={catId}
-                  className={`category-tile${instCount > 0 ? ' has-data' : ''}`}
+                  className={`category-tile${instCount > 0 ? ' has-data' : ''}${isSelected ? ' selected' : ''}`}
                   onClick={() => handleSubcategoryClick(catId)}
                 >
                   <div className="category-tile-icon"><CatIcon size={28} /></div>
@@ -330,17 +326,9 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Drilled-in: Breadcrumb + Two-column layout */}
+      {/* Two-column layout below subcategory tiles */}
       {selectedCategoryId && selectedRootCategory && selectedCategory && (
         <>
-          {/* Breadcrumb */}
-          <div className="breadcrumb">
-            <button className="btn btn-ghost" onClick={handleBackToRoot}>
-              {selectedRootCategory.name}
-            </button>
-            <span className="breadcrumb-sep">&gt;</span>
-            <span className="breadcrumb-current">{selectedCategory.name}</span>
-          </div>
 
           <div className="two-column-layout">
             {/* Left: Institution Panel */}
