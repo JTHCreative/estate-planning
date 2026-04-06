@@ -8,21 +8,22 @@ import {
 } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 import {
-  createUserProfile, getUserProfile, getPartnerProfile,
-  linkPartner as linkPartnerFn, unlinkPartner as unlinkPartnerFn,
+  createUserProfile, getUserProfile, getHouseholdMembers,
+  joinHousehold as joinHouseholdFn, leaveHousehold as leaveHouseholdFn,
+  removeMemberFromHousehold as removeMemberFn,
   updateUserProfile,
 } from '../lib/storage';
-import type { UserProfile } from '../lib/storage';
+import type { UserProfile, HouseholdMember } from '../lib/storage';
 
 export interface User {
   id: string;
   email: string;
   firstName: string;
   lastName: string;
-  partnerCode: string;
-  partnerId: string | null;
+  householdId: string;
+  inviteCode: string;
   photoURL: string | null;
-  partner?: { id: string; email: string; firstName: string; lastName: string; photoURL: string | null } | null;
+  householdMembers: HouseholdMember[];
 }
 
 interface AuthContextType {
@@ -31,8 +32,9 @@ interface AuthContextType {
   register: (email: string, password: string, firstName: string, lastName: string) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
-  doLinkPartner: (partnerCode: string) => Promise<void>;
-  doUnlinkPartner: () => Promise<void>;
+  joinHousehold: (inviteCode: string) => Promise<void>;
+  leaveHousehold: () => Promise<void>;
+  removeMember: (memberId: string) => Promise<void>;
   updatePhoto: (photoURL: string | null) => Promise<void>;
   loading: boolean;
 }
@@ -46,21 +48,21 @@ export function useAuth() {
 }
 
 async function profileToUser(profile: UserProfile): Promise<User> {
-  let partner = null;
+  let members: HouseholdMember[] = [];
   try {
-    partner = await getPartnerProfile(profile);
+    members = await getHouseholdMembers(profile.householdId);
   } catch {
-    // Partner profile may not be accessible yet
+    // May not be accessible yet
   }
   return {
     id: profile.uid,
     email: profile.email,
     firstName: profile.firstName,
     lastName: profile.lastName,
-    partnerCode: profile.partnerCode,
-    partnerId: profile.partnerId,
+    householdId: profile.householdId,
+    inviteCode: profile.inviteCode,
     photoURL: profile.photoURL || null,
-    partner: partner ? { id: partner.uid, email: partner.email, firstName: partner.firstName, lastName: partner.lastName, photoURL: partner.photoURL || null } : null,
+    householdMembers: members,
   };
 }
 
@@ -82,7 +84,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    // Safety timeout — never stay on loading screen more than 5 seconds
     const timeout = setTimeout(() => {
       setLoading(false);
     }, 5000);
@@ -94,7 +95,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (profile) {
             setUser(await profileToUser(profile));
           } else {
-            // Auth exists but no Firestore profile — create one from auth data
             const newProfile = await createUserProfile(
               fbUser.uid,
               fbUser.email || '',
@@ -108,16 +108,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch (err) {
         console.error('Auth state error:', err);
-        // If Firestore fails, still set a minimal user from Firebase Auth
         if (fbUser) {
           setUser({
             id: fbUser.uid,
             email: fbUser.email || '',
             firstName: fbUser.displayName || 'User',
             lastName: '',
-            partnerCode: '',
-            partnerId: null,
+            householdId: '',
+            inviteCode: '',
             photoURL: null,
+            householdMembers: [],
           });
         } else {
           setUser(null);
@@ -146,15 +146,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (err) {
       console.error('Login profile fetch error:', err);
-      // Still set a minimal user so we don't get stuck on loading
       setUser({
         id: cred.user.uid,
         email: cred.user.email || '',
         firstName: '',
         lastName: '',
-        partnerCode: '',
-        partnerId: null,
+        householdId: '',
+        inviteCode: '',
         photoURL: null,
+        householdMembers: [],
       });
     }
     setLoading(false);
@@ -172,15 +172,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
-  const doLinkPartner = async (partnerCode: string) => {
+  const joinHousehold = async (inviteCode: string) => {
     if (!user) return;
-    await linkPartnerFn(user.id, partnerCode);
+    await joinHouseholdFn(user.id, inviteCode);
     await refreshUser();
   };
 
-  const doUnlinkPartner = async () => {
+  const leaveHousehold = async () => {
     if (!user) return;
-    await unlinkPartnerFn(user.id);
+    await leaveHouseholdFn(user.id);
+    await refreshUser();
+  };
+
+  const removeMember = async (memberId: string) => {
+    if (!user) return;
+    await removeMemberFn(memberId);
     await refreshUser();
   };
 
@@ -191,7 +197,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, refreshUser, doLinkPartner, doUnlinkPartner, updatePhoto, loading }}>
+    <AuthContext.Provider value={{ user, login, register, logout, refreshUser, joinHousehold, leaveHousehold, removeMember, updatePhoto, loading }}>
       {children}
     </AuthContext.Provider>
   );

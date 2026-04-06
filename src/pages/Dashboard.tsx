@@ -61,14 +61,14 @@ export default function Dashboard() {
   // User filter state
   const [activeUserIds, setActiveUserIds] = useState<Set<string>>(new Set());
 
-  // Initialize active users when user loads
+  // Initialize active users when user/household loads
   useEffect(() => {
     if (user) {
-      const ids = new Set([user.id]);
-      if (user.partnerId) ids.add(user.partnerId);
+      const ids = new Set(user.householdMembers.map(m => m.id));
+      if (ids.size === 0) ids.add(user.id);
       setActiveUserIds(ids);
     }
-  }, [user?.id, user?.partnerId]);
+  }, [user?.id, user?.householdMembers]);
 
   const toggleUserFilter = (uid: string) => {
     setActiveUserIds(prev => {
@@ -305,28 +305,23 @@ export default function Dashboard() {
         <h2>Dashboard</h2>
         <div className="user-filters">
           <span className="user-filter-label">Viewing:</span>
-          <button
-            className={`user-chip${activeUserIds.has(user?.id || '') ? ' active' : ''}`}
-            onClick={() => toggleUserFilter(user?.id || '')}
-          >
-            {user?.photoURL
-              ? <img src={user.photoURL} alt="" className="user-chip-avatar" />
-              : <span className="user-chip-initials">{user?.firstName?.[0]}{user?.lastName?.[0]}</span>
-            }
-            {user?.firstName}
-          </button>
-          {user?.partner && (
-            <button
-              className={`user-chip${activeUserIds.has(user.partner.id) ? ' active' : ''}`}
-              onClick={() => toggleUserFilter(user.partner!.id)}
-            >
-              {user.partner.photoURL
-                ? <img src={user.partner.photoURL} alt="" className="user-chip-avatar" />
-                : <span className="user-chip-initials">{user.partner.firstName?.[0]}{user.partner.lastName?.[0]}</span>
-              }
-              {user.partner.firstName}
-            </button>
-          )}
+          {(user?.householdMembers || []).map(member => {
+            const mInitials = `${member.firstName?.[0] || ''}${member.lastName?.[0] || ''}`.toUpperCase();
+            const isMe = member.id === user?.id;
+            return (
+              <button
+                key={member.id}
+                className={`user-chip${activeUserIds.has(member.id) ? ' active' : ''}`}
+                onClick={() => toggleUserFilter(member.id)}
+              >
+                {member.photoURL
+                  ? <img src={member.photoURL} alt="" className="user-chip-avatar" />
+                  : <span className="user-chip-initials">{mInitials}</span>
+                }
+                {member.firstName}{isMe ? ' (You)' : ''}
+              </button>
+            );
+          })}
         </div>
       </div>
 

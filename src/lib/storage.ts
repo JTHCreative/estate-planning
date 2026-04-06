@@ -11,8 +11,16 @@ export interface UserProfile {
   email: string;
   firstName: string;
   lastName: string;
-  partnerCode: string;
-  partnerId: string | null;
+  householdId: string;
+  inviteCode: string;
+  photoURL: string | null;
+}
+
+export interface HouseholdMember {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
   photoURL: string | null;
 }
 
@@ -50,8 +58,12 @@ export interface Account {
 // --- User Profiles ---
 
 export async function createUserProfile(uid: string, email: string, firstName: string, lastName: string): Promise<UserProfile> {
-  const partnerCode = crypto.randomUUID().slice(0, 8).toUpperCase();
-  const profile: UserProfile = { uid, email: email.toLowerCase(), firstName, lastName, partnerCode, partnerId: null, photoURL: null };
+  const householdId = crypto.randomUUID();
+  const inviteCode = crypto.randomUUID().slice(0, 8).toUpperCase();
+  const profile: UserProfile = {
+    uid, email: email.toLowerCase(), firstName, lastName,
+    householdId, inviteCode, photoURL: null,
+  };
   await setDoc(doc(db, 'users', uid), profile);
   return profile;
 }
@@ -62,47 +74,85 @@ export async function updateUserProfile(uid: string, updates: Partial<UserProfil
 
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   const snap = await getDoc(doc(db, 'users', uid));
-  return snap.exists() ? (snap.data() as UserProfile) : null;
+  if (!snap.exists()) return null;
+  const data = snap.data() as any;
+  // Migration: if old profile has partnerId but no householdId, migrate
+  if (!data.householdId) {
+    const householdId = crypto.randomUUID();
+    const inviteCode = data.partnerCode || crypto.randomUUID().slice(0, 8).toUpperCase();
+    await updateDoc(doc(db, 'users', uid), { householdId, inviteCode });
+    data.householdId = householdId;
+    data.inviteCode = inviteCode;
+    // If they had a partner, migrate partner to same household
+    if (data.partnerId) {
+      const partnerSnap = await getDoc(doc(db, 'users', data.partnerId));
+      if (partnerSnap.exists()) {
+        await updateDoc(doc(db, 'users', data.partnerId), { householdId, inviteCode: partnerSnap.data().partnerCode || crypto.randomUUID().slice(0, 8).toUpperCase() });
+      }
+    }
+  }
+  return {
+    uid: data.uid,
+    email: data.email,
+    firstName: data.firstName,
+    lastName: data.lastName,
+    householdId: data.householdId,
+    inviteCode: data.inviteCode || data.partnerCode,
+    photoURL: data.photoURL || null,
+  };
 }
 
-export async function getPartnerProfile(user: UserProfile): Promise<UserProfile | null> {
-  if (!user.partnerId) return null;
-  return getUserProfile(user.partnerId);
-}
+// --- Household Members ---
 
-export async function linkPartner(userId: string, partnerCode: string): Promise<void> {
-  // Find partner by code
-  const q = query(collection(db, 'users'), where('partnerCode', '==', partnerCode));
+export async function getHouseholdMembers(householdId: string): Promise<HouseholdMember[]> {
+  const q = query(collection(db, 'users'), where('householdId', '==', householdId));
   const snap = await getDocs(q);
-  if (snap.empty) throw new Error('Invalid partner code');
-
-  const partner = snap.docs[0].data() as UserProfile;
-  if (partner.uid === userId) throw new Error('Cannot link to yourself');
-  if (partner.partnerId && partner.partnerId !== userId) throw new Error('That user is already linked to another partner');
-
-  const batch = writeBatch(db);
-  batch.update(doc(db, 'users', userId), { partnerId: partner.uid });
-  batch.update(doc(db, 'users', partner.uid), { partnerId: userId });
-  await batch.commit();
+  return snap.docs.map(d => {
+    const data = d.data();
+    return {
+      id: data.uid,
+      email: data.email,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      photoURL: data.photoURL || null,
+    };
+  });
 }
 
-export async function unlinkPartner(userId: string): Promise<void> {
-  const profile = await getUserProfile(userId);
-  if (!profile?.partnerId) return;
+export async function joinHousehold(userId: string, inviteCode: string): Promise<void> {
+  // Find any user with this invite code
+  const q = query(collection(db, 'users'), where('inviteCode', '==', inviteCode));
+  const snap = await getDocs(q);
+  if (snap.empty) throw new Error('Invalid invite code');
 
-  const batch = writeBatch(db);
-  batch.update(doc(db, 'users', userId), { partnerId: null });
-  batch.update(doc(db, 'users', profile.partnerId), { partnerId: null });
-  await batch.commit();
+  const target = snap.docs[0].data();
+  if (target.uid === userId) throw new Error('Cannot join your own household');
+
+  const targetHouseholdId = target.householdId;
+  if (!targetHouseholdId) throw new Error('Invalid household');
+
+  // Update the joining user's householdId to the target's household
+  await updateDoc(doc(db, 'users', userId), { householdId: targetHouseholdId });
+}
+
+export async function leaveHousehold(userId: string): Promise<void> {
+  // Create a new solo household for this user
+  const newHouseholdId = crypto.randomUUID();
+  await updateDoc(doc(db, 'users', userId), { householdId: newHouseholdId });
+}
+
+export async function removeMemberFromHousehold(memberId: string): Promise<void> {
+  // Same as leaving — give them their own household
+  await leaveHousehold(memberId);
 }
 
 // --- Helper: visible user IDs ---
 
 async function getVisibleUserIds(userId: string): Promise<string[]> {
   const profile = await getUserProfile(userId);
-  const ids = [userId];
-  if (profile?.partnerId) ids.push(profile.partnerId);
-  return ids;
+  if (!profile) return [userId];
+  const members = await getHouseholdMembers(profile.householdId);
+  return members.map(m => m.id);
 }
 
 // --- Institutions ---
@@ -140,7 +190,6 @@ export async function updateInstitution(id: string, updates: Partial<Institution
 }
 
 export async function deleteInstitution(id: string): Promise<void> {
-  // Delete all accounts under this institution first
   const q = query(collection(db, 'accounts'), where('institutionId', '==', id));
   const snap = await getDocs(q);
   const batch = writeBatch(db);
