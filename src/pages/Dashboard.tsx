@@ -454,7 +454,11 @@ export default function Dashboard() {
               ) : (
                 <div className="inst-panel-list">
                   {categoryInstitutions.map(inst => {
-                    const instAcctCount = accounts.filter(a => a.institutionId === inst.id).length;
+                    const instAccts = accounts.filter(a => a.institutionId === inst.id && activeUserIds.has(a.userId));
+                    const instAcctCount = instAccts.length;
+                    // Get unique users who have accounts in this institution
+                    const userIds = [...new Set(instAccts.map(a => a.userId))];
+                    const instUsers = userIds.map(uid => allMembers.find(m => m.id === uid)).filter(Boolean);
                     return (
                       <div
                         key={inst.id}
@@ -465,6 +469,21 @@ export default function Dashboard() {
                           <strong>{inst.name}</strong>
                           <span className="meta">{instAcctCount} {instAcctCount === 1 ? itemLabelSingular.toLowerCase() : itemLabel.toLowerCase()}</span>
                         </div>
+                        {instUsers.length > 0 && (
+                          <div className={`inst-user-avatars${instUsers.length > 3 ? ' wrap' : ''}`}>
+                            {instUsers.map(m => {
+                              const mInitials = `${m!.firstName?.[0] || ''}${m!.lastName?.[0] || ''}`.toUpperCase();
+                              return (
+                                <div key={m!.id} className="inst-user-avatar" title={`${m!.firstName} ${m!.lastName}`}>
+                                  {m!.photoURL
+                                    ? <img src={m!.photoURL} alt="" />
+                                    : <span>{mInitials}</span>
+                                  }
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                         {isOwnDataOnly && (
                           <div className="inst-panel-item-actions" onClick={e => e.stopPropagation()}>
                             <button className="btn btn-icon" onClick={() => startEditInst(inst)}><Edit3 size={14} /></button>

@@ -599,6 +599,63 @@ a:hover { text-decoration: underline; }
 
 .inst-panel-item:hover .inst-panel-item-actions { opacity: 1; }
 
+.inst-user-avatars {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: auto;
+  margin-right: 4px;
+}
+
+.inst-user-avatars.wrap {
+  flex-wrap: wrap;
+  max-width: 60px;
+  justify-content: center;
+}
+
+.inst-user-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--primary-alpha-15);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  flex-shrink: 0;
+  overflow: hidden;
+  text-transform: uppercase;
+  cursor: default;
+  position: relative;
+}
+
+.inst-user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.inst-user-avatar[title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  z-index: 10;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
 .inst-panel-empty {
   padding: 40px 20px;
   text-align: center;
