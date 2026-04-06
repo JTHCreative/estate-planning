@@ -58,6 +58,33 @@ const iconMap: Record<string, any> = {
 export default function Dashboard() {
   const { user } = useAuth();
 
+  // User filter state
+  const [activeUserIds, setActiveUserIds] = useState<Set<string>>(new Set());
+
+  // Initialize active users when user loads
+  useEffect(() => {
+    if (user) {
+      const ids = new Set([user.id]);
+      if (user.partnerId) ids.add(user.partnerId);
+      setActiveUserIds(ids);
+    }
+  }, [user?.id, user?.partnerId]);
+
+  const toggleUserFilter = (uid: string) => {
+    setActiveUserIds(prev => {
+      const next = new Set(prev);
+      if (next.has(uid)) {
+        if (next.size > 1) next.delete(uid); // Don't allow empty
+      } else {
+        next.add(uid);
+      }
+      return next;
+    });
+  };
+
+  // Can only add/edit when viewing only own data
+  const isOwnDataOnly = activeUserIds.size === 1 && activeUserIds.has(user?.id || '');
+
   // Navigation state
   const [selectedRoot, setSelectedRoot] = useState<number | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
@@ -93,10 +120,10 @@ export default function Dashboard() {
   const addItemLabel = config.addLabel || 'Add Account';
   const nameFieldLabel = config.nameLabel || 'Account Name';
 
-  // Institutions filtered for the selected category
-  const categoryInstitutions = institutions.filter(i => i.categoryId === selectedCategoryId);
+  // Institutions filtered for the selected category AND active users
+  const categoryInstitutions = institutions.filter(i => i.categoryId === selectedCategoryId && activeUserIds.has(i.userId));
   const selectedInstitution = categoryInstitutions.find(i => i.id === selectedInstitutionId) || null;
-  const institutionAccounts = accounts.filter(a => a.institutionId === selectedInstitutionId);
+  const institutionAccounts = accounts.filter(a => a.institutionId === selectedInstitutionId && activeUserIds.has(a.userId));
 
   // Load root-level counts
   const loadRootCounts = useCallback(async () => {
@@ -273,6 +300,36 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard">
+      {/* User Filter Header */}
+      <div className="dash-header">
+        <h2>Dashboard</h2>
+        <div className="user-filters">
+          <span className="user-filter-label">Viewing:</span>
+          <button
+            className={`user-chip${activeUserIds.has(user?.id || '') ? ' active' : ''}`}
+            onClick={() => toggleUserFilter(user?.id || '')}
+          >
+            {user?.photoURL
+              ? <img src={user.photoURL} alt="" className="user-chip-avatar" />
+              : <span className="user-chip-initials">{user?.firstName?.[0]}{user?.lastName?.[0]}</span>
+            }
+            {user?.firstName}
+          </button>
+          {user?.partner && (
+            <button
+              className={`user-chip${activeUserIds.has(user.partner.id) ? ' active' : ''}`}
+              onClick={() => toggleUserFilter(user.partner!.id)}
+            >
+              {user.partner.photoURL
+                ? <img src={user.partner.photoURL} alt="" className="user-chip-avatar" />
+                : <span className="user-chip-initials">{user.partner.firstName?.[0]}{user.partner.lastName?.[0]}</span>
+              }
+              {user.partner.firstName}
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Root Category Cards */}
       <div className="root-cards-grid">
         {rootCategories.map((root, idx) => {
@@ -343,9 +400,9 @@ export default function Dashboard() {
             <div className="inst-panel">
               <div className="inst-panel-header">
                 <h4>Institutions</h4>
-                <button className="btn btn-sm btn-primary" onClick={() => { resetInstForm(); setEditingInst(null); setShowInstPicker(true); }}>
+                {isOwnDataOnly && <button className="btn btn-sm btn-primary" onClick={() => { resetInstForm(); setEditingInst(null); setShowInstPicker(true); }}>
                   <Plus size={14} /> Add
-                </button>
+                </button>}
               </div>
               {categoryInstitutions.length === 0 ? (
                 <div className="inst-panel-empty">
@@ -366,10 +423,12 @@ export default function Dashboard() {
                           <strong>{inst.name}</strong>
                           <span className="meta">{instAcctCount} {instAcctCount === 1 ? itemLabelSingular.toLowerCase() : itemLabel.toLowerCase()}</span>
                         </div>
-                        <div className="inst-panel-item-actions" onClick={e => e.stopPropagation()}>
-                          <button className="btn btn-icon" onClick={() => startEditInst(inst)}><Edit3 size={14} /></button>
-                          <button className="btn btn-icon btn-danger" onClick={() => handleDeleteInstitution(inst.id)}><Trash2 size={14} /></button>
-                        </div>
+                        {isOwnDataOnly && (
+                          <div className="inst-panel-item-actions" onClick={e => e.stopPropagation()}>
+                            <button className="btn btn-icon" onClick={() => startEditInst(inst)}><Edit3 size={14} /></button>
+                            <button className="btn btn-icon btn-danger" onClick={() => handleDeleteInstitution(inst.id)}><Trash2 size={14} /></button>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -397,9 +456,9 @@ export default function Dashboard() {
                       {selectedInstitution.phone && <span className="meta"> | {selectedInstitution.phone}</span>}
                       {selectedInstitution.notes && <p className="meta">{selectedInstitution.notes}</p>}
                     </div>
-                    <button className="btn btn-sm btn-primary" onClick={() => { resetAcctForm(); setEditingAcct(null); setShowAcctForm(true); }}>
+                    {isOwnDataOnly && <button className="btn btn-sm btn-primary" onClick={() => { resetAcctForm(); setEditingAcct(null); setShowAcctForm(true); }}>
                       <Plus size={14} /> {addItemLabel}
-                    </button>
+                    </button>}
                   </div>
 
                   {institutionAccounts.length === 0 ? (
@@ -417,10 +476,12 @@ export default function Dashboard() {
                               {acct.accountType && <span className="badge">{acct.accountType}</span>}
                               <strong>{acct.accountName}</strong>
                             </div>
-                            <div className="account-actions">
-                              <button className="btn btn-icon" onClick={() => startEditAcct(acct)}><Edit3 size={14} /></button>
-                              <button className="btn btn-icon btn-danger" onClick={() => handleDeleteAccount(acct.id)}><Trash2 size={14} /></button>
-                            </div>
+                            {isOwnDataOnly && (
+                              <div className="account-actions">
+                                <button className="btn btn-icon" onClick={() => startEditAcct(acct)}><Edit3 size={14} /></button>
+                                <button className="btn btn-icon btn-danger" onClick={() => handleDeleteAccount(acct.id)}><Trash2 size={14} /></button>
+                              </div>
+                            )}
                           </div>
                           <div className="account-details">
                             {acct.accountNumber && (
