@@ -482,10 +482,12 @@ export default function Dashboard() {
                             })}
                           </div>
                         )}
-                        <div className="inst-panel-item-actions" onClick={e => e.stopPropagation()}>
-                          <button className="btn btn-icon" onClick={() => startEditInst(inst)}><Edit3 size={14} /></button>
-                          <button className="btn btn-icon btn-danger" onClick={() => handleDeleteInstitution(inst.id)}><Trash2 size={14} /></button>
-                        </div>
+                        {inst.userId === user?.id && (
+                          <div className="inst-panel-item-actions" onClick={e => e.stopPropagation()}>
+                            <button className="btn btn-icon" onClick={() => startEditInst(inst)}><Edit3 size={14} /></button>
+                            <button className="btn btn-icon btn-danger" onClick={() => handleDeleteInstitution(inst.id)}><Trash2 size={14} /></button>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -541,10 +543,12 @@ export default function Dashboard() {
                               {acct.accountType && <span className="badge">{acct.accountType}</span>}
                               <strong>{acct.accountName}</strong>
                             </div>
-                            <div className="account-actions">
-                              <button className="btn btn-icon" onClick={() => startEditAcct(acct)}><Edit3 size={14} /></button>
-                              <button className="btn btn-icon btn-danger" onClick={() => handleDeleteAccount(acct.id)}><Trash2 size={14} /></button>
-                            </div>
+                            {acct.userId === user?.id && (
+                              <div className="account-actions">
+                                <button className="btn btn-icon" onClick={() => startEditAcct(acct)}><Edit3 size={14} /></button>
+                                <button className="btn btn-icon btn-danger" onClick={() => handleDeleteAccount(acct.id)}><Trash2 size={14} /></button>
+                              </div>
+                            )}
                           </div>
                           <div className="account-details">
                             {acct.accountNumber && (
