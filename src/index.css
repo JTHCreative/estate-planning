@@ -1085,15 +1085,16 @@ a:hover { text-decoration: underline; }
 }
 
 .profile-pic-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
+  position: relative;
+  width: 96px;
+  height: 96px;
+  flex-shrink: 0;
 }
 
 .profile-pic {
-  width: 88px;
-  height: 88px;
+  position: relative;
+  width: 96px;
+  height: 96px;
   border-radius: 50%;
   background: var(--primary-alpha-15);
   color: var(--primary);
@@ -1104,7 +1105,12 @@ a:hover { text-decoration: underline; }
   font-weight: 700;
   overflow: hidden;
   text-transform: uppercase;
+  cursor: pointer;
+  border: 2px solid var(--border);
+  transition: border-color 0.2s;
 }
+
+.profile-pic:hover { border-color: var(--primary); }
 
 .profile-pic img {
   width: 100%;
@@ -1112,9 +1118,48 @@ a:hover { text-decoration: underline; }
   object-fit: cover;
 }
 
-.profile-pic-actions {
+.profile-pic-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
   display: flex;
-  gap: 6px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0;
+  transition: opacity 0.2s;
+  border-radius: 50%;
+}
+
+.profile-pic:hover .profile-pic-overlay { opacity: 1; }
+
+.profile-pic-remove {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--bg-card);
+  color: var(--danger);
+  border: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 0;
+  z-index: 1;
+}
+
+.profile-pic-remove:hover {
+  background: var(--danger);
+  color: #fff;
+  border-color: var(--danger);
 }
 
 .profile-info {
