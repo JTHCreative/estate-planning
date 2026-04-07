@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { Copy, Check, Camera, X, Sun, Moon, UserPlus, UserMinus, Users, LogOut, Lock, KeyRound } from 'lucide-react';
+import { Copy, Check, Camera, X, Sun, Moon, UserPlus, UserMinus, Users, LogOut, Lock, KeyRound, User as UserIcon } from 'lucide-react';
 
 export default function Settings() {
   const { user, joinHousehold, leaveHousehold, removeMember, updatePhoto, refreshUser, setUserPin, clearUserPin } = useAuth();
@@ -136,30 +136,33 @@ export default function Settings() {
       <div className="settings-left">
 
       <div className="settings-section">
-        <h3>Your Profile</h3>
-        <div className="profile-section">
-          <div className="profile-pic-container">
-            <div className="profile-pic">
-              {user?.photoURL
-                ? <img src={user.photoURL} alt={user.firstName} />
-                : <span>{initials}</span>
-              }
-            </div>
-            <div className="profile-pic-actions">
-              <button className="btn btn-sm btn-primary" onClick={() => fileInputRef.current?.click()}>
-                <Camera size={14} /> {user?.photoURL ? 'Change' : 'Add Photo'}
-              </button>
-              {user?.photoURL && (
-                <button className="btn btn-sm btn-danger" onClick={handleRemovePhoto}>
-                  <X size={14} /> Remove
+        <h3><UserIcon size={20} /> Account Settings</h3>
+        <div className="settings-subsection">
+          <h4>Profile</h4>
+          <div className="profile-section">
+            <div className="profile-pic-container">
+              <div className="profile-pic">
+                {user?.photoURL
+                  ? <img src={user.photoURL} alt={user.firstName} />
+                  : <span>{initials}</span>
+                }
+              </div>
+              <div className="profile-pic-actions">
+                <button className="btn btn-sm btn-primary" onClick={() => fileInputRef.current?.click()}>
+                  <Camera size={14} /> {user?.photoURL ? 'Change' : 'Add Photo'}
                 </button>
-              )}
-              <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoUpload} style={{ display: 'none' }} />
+                {user?.photoURL && (
+                  <button className="btn btn-sm btn-danger" onClick={handleRemovePhoto}>
+                    <X size={14} /> Remove
+                  </button>
+                )}
+                <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoUpload} style={{ display: 'none' }} />
+              </div>
             </div>
-          </div>
-          <div className="profile-info">
-            <div><label>Name:</label> <span>{user?.firstName} {user?.lastName}</span></div>
-            <div><label>Email:</label> <span>{user?.email}</span></div>
+            <div className="profile-info">
+              <div><label>Name:</label> <span>{user?.firstName} {user?.lastName}</span></div>
+              <div><label>Email:</label> <span>{user?.email}</span></div>
+            </div>
           </div>
         </div>
       </div>
