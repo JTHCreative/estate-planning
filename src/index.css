@@ -134,6 +134,26 @@ a:hover { text-decoration: underline; }
 
 .custom-type-input input { flex: 1; }
 
+.pin-input {
+  font-family: monospace;
+  font-size: 20px !important;
+  letter-spacing: 8px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.pin-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.pin-modal { max-width: 400px; }
+.pin-modal .modal-header h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .form-actions {
   display: flex;
   gap: 10px;

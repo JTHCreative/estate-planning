@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import {
   CATEGORIES, getInstitutions, getAccounts,
   addInstitution, updateInstitution, deleteInstitution,
-  addAccount, updateAccount, deleteAccount,
+  addAccount, updateAccount, deleteAccount, verifyPin, getUserProfile,
 } from '../lib/storage';
 import type { Institution, Account } from '../lib/storage';
 import {
@@ -119,6 +119,13 @@ export default function Dashboard() {
   // Reveal state for masked fields
   const [revealedFields, setRevealedFields] = useState<Set<string>>(new Set());
 
+  // PIN unlock state - which user IDs are currently unlocked for sensitive viewing
+  const [unlockedUsers, setUnlockedUsers] = useState<Set<string>>(new Set());
+  const [pinPromptUserId, setPinPromptUserId] = useState<string | null>(null);
+  const [pinPromptFieldKey, setPinPromptFieldKey] = useState<string | null>(null);
+  const [pinInput, setPinInput] = useState('');
+  const [pinPromptError, setPinPromptError] = useState('');
+
   // Derived: selected category object
   const selectedCategory = selectedCategoryId ? CATEGORIES.find(c => c.id === selectedCategoryId) || null : null;
   const config = selectedCategoryId ? (categoryFields[selectedCategoryId] || defaultFields) : defaultFields;
@@ -212,12 +219,52 @@ export default function Dashboard() {
 
 
   // Handlers: field masking
-  const toggleField = (key: string) => {
-    setRevealedFields(prev => {
-      const next = new Set(prev);
-      next.has(key) ? next.delete(key) : next.add(key);
-      return next;
-    });
+  const toggleField = async (key: string, ownerId: string) => {
+    // If currently revealed, just hide it
+    if (revealedFields.has(key)) {
+      setRevealedFields(prev => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+      return;
+    }
+    // If owner is already unlocked this session, reveal directly
+    if (unlockedUsers.has(ownerId)) {
+      setRevealedFields(prev => new Set(prev).add(key));
+      return;
+    }
+    // Otherwise, check if owner has a PIN. If not, reveal directly.
+    const ownerProfile = await getUserProfile(ownerId);
+    if (!ownerProfile?.pinHash) {
+      setUnlockedUsers(prev => new Set(prev).add(ownerId));
+      setRevealedFields(prev => new Set(prev).add(key));
+      return;
+    }
+    // PIN required — show the prompt
+    setPinPromptUserId(ownerId);
+    setPinPromptFieldKey(key);
+    setPinInput('');
+    setPinPromptError('');
+  };
+
+  const submitPin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pinPromptUserId) return;
+    setPinPromptError('');
+    const ok = await verifyPin(pinPromptUserId, pinInput);
+    if (!ok) {
+      setPinPromptError('Incorrect PIN');
+      setPinInput('');
+      return;
+    }
+    setUnlockedUsers(prev => new Set(prev).add(pinPromptUserId));
+    if (pinPromptFieldKey) {
+      setRevealedFields(prev => new Set(prev).add(pinPromptFieldKey));
+    }
+    setPinPromptUserId(null);
+    setPinPromptFieldKey(null);
+    setPinInput('');
   };
 
   const maskValue = (value: string) => {
@@ -571,7 +618,7 @@ export default function Dashboard() {
                                 <label>Account #:</label>
                                 <span className="password-field">
                                   {revealedFields.has(`${acct.id}-acct`) ? acct.accountNumber : maskValue(acct.accountNumber)}
-                                  <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-acct`)}>
+                                  <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-acct`, acct.userId)}>
                                     {revealedFields.has(`${acct.id}-acct`) ? <EyeOff size={14} /> : <Eye size={14} />}
                                   </button>
                                 </span>
@@ -582,7 +629,7 @@ export default function Dashboard() {
                                 <label>Routing #:</label>
                                 <span className="password-field">
                                   {revealedFields.has(`${acct.id}-rtn`) ? acct.routingNumber : maskValue(acct.routingNumber)}
-                                  <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-rtn`)}>
+                                  <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-rtn`, acct.userId)}>
                                     {revealedFields.has(`${acct.id}-rtn`) ? <EyeOff size={14} /> : <Eye size={14} />}
                                   </button>
                                 </span>
@@ -593,7 +640,7 @@ export default function Dashboard() {
                                 <label>Username:</label>
                                 <span className="password-field">
                                   {revealedFields.has(`${acct.id}-user`) ? acct.username : maskValue(acct.username)}
-                                  <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-user`)}>
+                                  <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-user`, acct.userId)}>
                                     {revealedFields.has(`${acct.id}-user`) ? <EyeOff size={14} /> : <Eye size={14} />}
                                   </button>
                                 </span>
@@ -604,7 +651,7 @@ export default function Dashboard() {
                                 <label>Password:</label>
                                 <span className="password-field">
                                   {revealedFields.has(`${acct.id}-pass`) ? acct.passwordEncrypted : '••••••••'}
-                                  <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-pass`)}>
+                                  <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-pass`, acct.userId)}>
                                     {revealedFields.has(`${acct.id}-pass`) ? <EyeOff size={14} /> : <Eye size={14} />}
                                   </button>
                                 </span>
@@ -770,6 +817,45 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* PIN Prompt Modal */}
+      {pinPromptUserId && (() => {
+        const owner = allMembers.find(m => m.id === pinPromptUserId);
+        return (
+          <div className="modal-overlay" onClick={() => { setPinPromptUserId(null); setPinPromptFieldKey(null); }}>
+            <div className="modal pin-modal" onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3><Icons.Lock size={18} /> Enter PIN</h3>
+                <button className="btn btn-ghost" onClick={() => { setPinPromptUserId(null); setPinPromptFieldKey(null); }}><X size={18} /></button>
+              </div>
+              <p className="section-desc">
+                Enter {owner?.firstName}'s 6-digit PIN to view sensitive information.
+              </p>
+              <form onSubmit={submitPin}>
+                <div className="form-group">
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    pattern="[0-9]{6}"
+                    maxLength={6}
+                    value={pinInput}
+                    onChange={e => setPinInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="••••••"
+                    className="pin-input"
+                    autoFocus
+                    required
+                  />
+                </div>
+                {pinPromptError && <div className="error-msg">{pinPromptError}</div>}
+                <div className="form-actions">
+                  <button type="button" className="btn btn-ghost" onClick={() => { setPinPromptUserId(null); setPinPromptFieldKey(null); }}>Cancel</button>
+                  <button type="submit" className="btn btn-primary">Unlock</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
