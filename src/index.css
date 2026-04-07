@@ -1025,7 +1025,24 @@ a:hover { text-decoration: underline; }
   margin-bottom: 20px;
 }
 
-.settings-section h3 { font-size: 20px; margin-bottom: 14px; }
+.settings-section h3 { font-size: 20px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+
+.settings-subsection {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 18px 20px;
+  margin-top: 12px;
+}
+
+.settings-subsection h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 14px;
+}
 .section-desc { font-size: 15px; color: var(--text-muted); margin-bottom: 18px; }
 
 .theme-toggle {
