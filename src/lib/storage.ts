@@ -14,6 +14,7 @@ export interface UserProfile {
   householdId: string;
   inviteCode: string;
   photoURL: string | null;
+  pinHash: string | null;
 }
 
 export interface HouseholdMember {
@@ -56,6 +57,32 @@ export interface Account {
   createdAt: any;
 }
 
+// --- PIN hashing ---
+
+export async function hashPin(pin: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(pin + 'estate-planning-pin-salt');
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+export async function verifyPin(uid: string, pin: string): Promise<boolean> {
+  const profile = await getUserProfile(uid);
+  if (!profile?.pinHash) return false;
+  const hash = await hashPin(pin);
+  return hash === profile.pinHash;
+}
+
+export async function setPin(uid: string, pin: string): Promise<void> {
+  const pinHash = await hashPin(pin);
+  await updateDoc(doc(db, 'users', uid), { pinHash });
+}
+
+export async function clearPin(uid: string): Promise<void> {
+  await updateDoc(doc(db, 'users', uid), { pinHash: null });
+}
+
 // --- User Profiles ---
 
 export async function createUserProfile(uid: string, email: string, firstName: string, lastName: string): Promise<UserProfile> {
@@ -63,7 +90,7 @@ export async function createUserProfile(uid: string, email: string, firstName: s
   const inviteCode = crypto.randomUUID().slice(0, 8).toUpperCase();
   const profile: UserProfile = {
     uid, email: email.toLowerCase(), firstName, lastName,
-    householdId, inviteCode, photoURL: null,
+    householdId, inviteCode, photoURL: null, pinHash: null,
   };
   await setDoc(doc(db, 'users', uid), profile);
   return profile;
@@ -100,6 +127,7 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
     householdId: data.householdId,
     inviteCode: data.inviteCode || data.partnerCode,
     photoURL: data.photoURL || null,
+    pinHash: data.pinHash || null,
   };
 }
 

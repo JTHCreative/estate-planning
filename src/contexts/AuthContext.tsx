@@ -11,7 +11,7 @@ import {
   createUserProfile, getUserProfile, getHouseholdMembers,
   joinHousehold as joinHouseholdFn, leaveHousehold as leaveHouseholdFn,
   removeMemberFromHousehold as removeMemberFn,
-  updateUserProfile,
+  updateUserProfile, setPin, clearPin,
 } from '../lib/storage';
 import type { UserProfile, HouseholdMember } from '../lib/storage';
 
@@ -23,6 +23,7 @@ export interface User {
   householdId: string;
   inviteCode: string;
   photoURL: string | null;
+  hasPin: boolean;
   householdMembers: HouseholdMember[];
 }
 
@@ -36,6 +37,8 @@ interface AuthContextType {
   leaveHousehold: () => Promise<void>;
   removeMember: (memberId: string) => Promise<void>;
   updatePhoto: (photoURL: string | null) => Promise<void>;
+  setUserPin: (pin: string) => Promise<void>;
+  clearUserPin: () => Promise<void>;
   loading: boolean;
 }
 
@@ -62,6 +65,7 @@ async function profileToUser(profile: UserProfile): Promise<User> {
     householdId: profile.householdId,
     inviteCode: profile.inviteCode,
     photoURL: profile.photoURL || null,
+    hasPin: !!profile.pinHash,
     householdMembers: members,
   };
 }
@@ -117,6 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             householdId: '',
             inviteCode: '',
             photoURL: null,
+            hasPin: false,
             householdMembers: [],
           });
         } else {
@@ -154,6 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         householdId: '',
         inviteCode: '',
         photoURL: null,
+        hasPin: false,
         householdMembers: [],
       });
     }
@@ -196,8 +202,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(prev => prev ? { ...prev, photoURL } : prev);
   };
 
+  const setUserPin = async (pin: string) => {
+    if (!user) return;
+    await setPin(user.id, pin);
+    setUser(prev => prev ? { ...prev, hasPin: true } : prev);
+  };
+
+  const clearUserPin = async () => {
+    if (!user) return;
+    await clearPin(user.id);
+    setUser(prev => prev ? { ...prev, hasPin: false } : prev);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, refreshUser, joinHousehold, leaveHousehold, removeMember, updatePhoto, loading }}>
+    <AuthContext.Provider value={{ user, login, register, logout, refreshUser, joinHousehold, leaveHousehold, removeMember, updatePhoto, setUserPin, clearUserPin, loading }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,17 +1,53 @@
 import { useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { Copy, Check, Camera, X, Sun, Moon, UserPlus, UserMinus, Users, LogOut } from 'lucide-react';
+import { Copy, Check, Camera, X, Sun, Moon, UserPlus, UserMinus, Users, LogOut, Lock, KeyRound } from 'lucide-react';
 
 export default function Settings() {
-  const { user, joinHousehold, leaveHousehold, removeMember, updatePhoto, refreshUser } = useAuth();
+  const { user, joinHousehold, leaveHousehold, removeMember, updatePhoto, refreshUser, setUserPin, clearUserPin } = useAuth();
   const { theme, setTheme } = useTheme();
   const [inviteCode, setInviteCode] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [pinValue, setPinValue] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
+  const [pinError, setPinError] = useState('');
+  const [pinMessage, setPinMessage] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleSetPin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPinError('');
+    setPinMessage('');
+    if (!/^\d{6}$/.test(pinValue)) {
+      setPinError('PIN must be exactly 6 digits');
+      return;
+    }
+    if (pinValue !== confirmPin) {
+      setPinError('PINs do not match');
+      return;
+    }
+    try {
+      await setUserPin(pinValue);
+      setPinMessage('PIN set successfully');
+      setPinValue('');
+      setConfirmPin('');
+    } catch (err: any) {
+      setPinError(err.message);
+    }
+  };
+
+  const handleClearPin = async () => {
+    if (!confirm('Remove your PIN? Sensitive fields will no longer be protected.')) return;
+    try {
+      await clearUserPin();
+      setPinMessage('PIN removed');
+    } catch (err: any) {
+      setPinError(err.message);
+    }
+  };
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -151,6 +187,64 @@ export default function Settings() {
 
       </div>{/* end settings-left */}
       <div className="settings-right">
+
+      <div className="settings-section">
+        <h3><Lock size={20} /> Security PIN</h3>
+        <p className="section-desc">
+          Set a 6-digit PIN to protect sensitive information like passwords and account numbers.
+          Household members will need your PIN to view your sensitive fields.
+        </p>
+
+        {user?.hasPin ? (
+          <div className="partner-status linked">
+            <KeyRound size={18} />
+            <div>
+              <strong>PIN is set</strong>
+              <span>Your sensitive fields are protected</span>
+            </div>
+            <button className="btn btn-sm btn-danger" onClick={handleClearPin}>
+              <X size={14} /> Remove
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSetPin} className="pin-form">
+            <div className="form-group">
+              <label>New 6-digit PIN</label>
+              <input
+                type="password"
+                inputMode="numeric"
+                pattern="[0-9]{6}"
+                maxLength={6}
+                value={pinValue}
+                onChange={e => setPinValue(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="••••••"
+                className="pin-input"
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label>Confirm PIN</label>
+              <input
+                type="password"
+                inputMode="numeric"
+                pattern="[0-9]{6}"
+                maxLength={6}
+                value={confirmPin}
+                onChange={e => setConfirmPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="••••••"
+                className="pin-input"
+                required
+              />
+            </div>
+            <button type="submit" className="btn btn-primary">
+              <Lock size={16} /> Set PIN
+            </button>
+          </form>
+        )}
+
+        {pinMessage && <div className="success-msg">{pinMessage}</div>}
+        {pinError && <div className="error-msg">{pinError}</div>}
+      </div>
 
       <div className="settings-section">
         <h3><Users size={20} /> Household Members</h3>
