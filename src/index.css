@@ -56,8 +56,8 @@
   --white-alpha-08: rgba(0,0,0,0.06);
   --overlay: rgba(0,0,0,0.35);
   --btn-primary-text: #fff;
-  --tile-selected-bg: #3a261f;
-  --tile-selected-border: #b8503a;
+  --tile-selected-bg: #b8503a;
+  --tile-selected-border: #9a3f2a;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
