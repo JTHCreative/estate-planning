@@ -11,11 +11,19 @@ export interface UserProfile {
   email: string;
   firstName: string;
   lastName: string;
-  householdId: string; // primary household (for invite code)
+  householdId: string; // primary household (for backwards compat)
   householdIds: string[]; // all households the user belongs to
-  inviteCode: string;
+  inviteCode: string; // legacy personal invite code
   photoURL: string | null;
   pinHash: string | null;
+}
+
+export interface Household {
+  id: string;
+  name: string;
+  inviteCode: string;
+  createdBy: string;
+  createdAt: any;
 }
 
 export interface HouseholdMember {
@@ -151,14 +159,54 @@ export function isEncrypted(value: string | null | undefined): boolean {
 // --- User Profiles ---
 
 export async function createUserProfile(uid: string, email: string, firstName: string, lastName: string): Promise<UserProfile> {
-  const householdId = crypto.randomUUID();
+  // New users start with NO household; they choose to create or join one in Settings
   const inviteCode = crypto.randomUUID().slice(0, 8).toUpperCase();
   const profile: UserProfile = {
     uid, email: email.toLowerCase(), firstName, lastName,
-    householdId, householdIds: [householdId], inviteCode, photoURL: null, pinHash: null,
+    householdId: '', householdIds: [], inviteCode, photoURL: null, pinHash: null,
   };
   await setDoc(doc(db, 'users', uid), profile);
   return profile;
+}
+
+// --- Household documents ---
+
+function generateInviteCode(): string {
+  return crypto.randomUUID().slice(0, 8).toUpperCase();
+}
+
+export async function createHousehold(userId: string, name: string): Promise<Household> {
+  const householdId = crypto.randomUUID();
+  const inviteCode = generateInviteCode();
+  const household: Household = {
+    id: householdId,
+    name: name.trim() || 'My Household',
+    inviteCode,
+    createdBy: userId,
+    createdAt: serverTimestamp(),
+  };
+  await setDoc(doc(db, 'households', householdId), household);
+
+  // Add this household to the user's list
+  const profile = await getUserProfile(userId);
+  if (!profile) throw new Error('User profile not found');
+  const newIds = [...profile.householdIds, householdId];
+  const updates: any = { householdIds: newIds };
+  // Make this their primary if they don't have one yet
+  if (!profile.householdId) updates.householdId = householdId;
+  await updateDoc(doc(db, 'users', userId), updates);
+
+  return household;
+}
+
+export async function getHousehold(householdId: string): Promise<Household | null> {
+  const snap = await getDoc(doc(db, 'households', householdId));
+  if (!snap.exists()) return null;
+  return snap.data() as Household;
+}
+
+export async function updateHouseholdName(householdId: string, name: string): Promise<void> {
+  await updateDoc(doc(db, 'households', householdId), { name: name.trim() });
 }
 
 export async function updateUserProfile(uid: string, updates: Partial<UserProfile>): Promise<void> {
@@ -191,6 +239,26 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
       await updateDoc(doc(db, 'users', uid), { householdIds });
     }
     data.householdIds = householdIds;
+  }
+
+  // Migration: ensure household documents exist for any household IDs
+  for (const hid of data.householdIds) {
+    try {
+      const hSnap = await getDoc(doc(db, 'households', hid));
+      if (!hSnap.exists()) {
+        // Create a household doc for this legacy household
+        const householdName = `${data.firstName || 'My'}'s Household`;
+        await setDoc(doc(db, 'households', hid), {
+          id: hid,
+          name: householdName,
+          inviteCode: data.inviteCode || crypto.randomUUID().slice(0, 8).toUpperCase(),
+          createdBy: data.uid,
+          createdAt: serverTimestamp(),
+        });
+      }
+    } catch {
+      // Ignore migration errors — user may not have permission yet
+    }
   }
   return {
     uid: data.uid,
@@ -239,26 +307,37 @@ export async function getHouseholdMembers(householdId: string): Promise<Househol
   return members;
 }
 
-export async function joinHousehold(userId: string, inviteCode: string): Promise<void> {
-  // Find any user with this invite code
-  const q = query(collection(db, 'users'), where('inviteCode', '==', inviteCode));
-  const snap = await getDocs(q);
-  if (snap.empty) throw new Error('Invalid invite code');
+export async function joinHousehold(userId: string, inviteCode: string): Promise<string> {
+  let targetHouseholdId: string | null = null;
 
-  const target = snap.docs[0].data();
-  if (target.uid === userId) throw new Error('Cannot join your own household');
+  // First: try to find a household by its invite code (new system)
+  const householdQ = query(collection(db, 'households'), where('inviteCode', '==', inviteCode));
+  const householdSnap = await getDocs(householdQ);
+  if (!householdSnap.empty) {
+    targetHouseholdId = householdSnap.docs[0].id;
+  } else {
+    // Legacy fallback: find a user with this personal invite code
+    const userQ = query(collection(db, 'users'), where('inviteCode', '==', inviteCode));
+    const userSnap = await getDocs(userQ);
+    if (userSnap.empty) throw new Error('Invalid invite code');
+    const target = userSnap.docs[0].data();
+    if (target.uid === userId) throw new Error('Cannot join your own household');
+    targetHouseholdId = target.householdId;
+  }
 
-  const targetHouseholdId = target.householdId;
   if (!targetHouseholdId) throw new Error('Invalid household');
 
-  // Add the household to the user's householdIds (don't replace)
   const profile = await getUserProfile(userId);
   if (!profile) throw new Error('User profile not found');
   if (profile.householdIds.includes(targetHouseholdId)) {
     throw new Error('You are already a member of this household');
   }
   const newHouseholdIds = [...profile.householdIds, targetHouseholdId];
-  await updateDoc(doc(db, 'users', userId), { householdIds: newHouseholdIds });
+  const updates: any = { householdIds: newHouseholdIds };
+  // Make this their primary if they don't have one yet
+  if (!profile.householdId) updates.householdId = targetHouseholdId;
+  await updateDoc(doc(db, 'users', userId), updates);
+  return targetHouseholdId;
 }
 
 export async function leaveHousehold(userId: string, householdIdToLeave?: string): Promise<void> {

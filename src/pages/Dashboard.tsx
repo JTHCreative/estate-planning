@@ -86,6 +86,31 @@ export default function Dashboard() {
 
   // Filter dropdown
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+  const [expandedHouseholds, setExpandedHouseholds] = useState<Set<string>>(new Set());
+
+  const toggleHouseholdExpand = (hid: string) => {
+    setExpandedHouseholds(prev => {
+      const next = new Set(prev);
+      next.has(hid) ? next.delete(hid) : next.add(hid);
+      return next;
+    });
+  };
+
+  const toggleHouseholdMembers = (memberIds: string[]) => {
+    // If all are selected, deselect all. Otherwise select all.
+    setActiveUserIds(prev => {
+      const next = new Set(prev);
+      const allSelected = memberIds.every(id => next.has(id));
+      if (allSelected) {
+        // Deselect all (but keep the user selected if they would otherwise have nothing)
+        for (const id of memberIds) next.delete(id);
+        if (next.size === 0 && user) next.add(user.id);
+      } else {
+        for (const id of memberIds) next.add(id);
+      }
+      return next;
+    });
+  };
 
   // Members list: always include self even if householdMembers is empty
   const allMembers = (user?.householdMembers && user.householdMembers.length > 0)
@@ -614,32 +639,79 @@ export default function Dashboard() {
               <div className="filter-backdrop" onClick={() => setShowFilterDropdown(false)} />
               <div className="filter-dropdown">
                 <div className="filter-dropdown-header">
-                  <span>Filter by Member</span>
+                  <span>Filter by Household / Member</span>
                   <button className="btn btn-ghost btn-sm" onClick={() => {
                     setActiveUserIds(new Set(allMembers.map(m => m.id)));
                   }}>Select All</button>
                 </div>
-                {allMembers.map(member => {
-                  const mInitials = `${member.firstName?.[0] || ''}${member.lastName?.[0] || ''}`.toUpperCase();
-                  const isMe = member.id === user?.id;
-                  const isActive = activeUserIds.has(member.id);
-                  return (
+
+                {/* If user has households, show grouped by household */}
+                {user && user.households.length > 0 ? (
+                  user.households.map(hh => {
+                    const memberIds = hh.members.map(m => m.id);
+                    const allSelected = memberIds.length > 0 && memberIds.every(id => activeUserIds.has(id));
+                    const someSelected = memberIds.some(id => activeUserIds.has(id));
+                    const isExpanded = expandedHouseholds.has(hh.id);
+                    return (
+                      <div key={hh.id} className="filter-household">
+                        <div className="filter-household-header">
+                          <div
+                            className={`filter-item-check${allSelected ? ' active' : ''}${!allSelected && someSelected ? ' partial' : ''}`}
+                            onClick={() => toggleHouseholdMembers(memberIds)}
+                          >
+                            {allSelected && <Icons.Check size={14} />}
+                            {!allSelected && someSelected && <Icons.Minus size={14} />}
+                          </div>
+                          <span className="filter-household-name" onClick={() => toggleHouseholdMembers(memberIds)}>
+                            {hh.name}
+                          </span>
+                          <span className="filter-household-count">{hh.members.length}</span>
+                          <button className="btn btn-icon btn-sm" onClick={() => toggleHouseholdExpand(hh.id)}>
+                            {isExpanded ? <Icons.ChevronDown size={14} /> : <Icons.ChevronRight size={14} />}
+                          </button>
+                        </div>
+                        {isExpanded && hh.members.map(member => {
+                          const mInitials = `${member.firstName?.[0] || ''}${member.lastName?.[0] || ''}`.toUpperCase();
+                          const isMe = member.id === user.id;
+                          const isActive = activeUserIds.has(member.id);
+                          return (
+                            <div
+                              key={`${hh.id}-${member.id}`}
+                              className={`filter-item filter-household-member${isActive ? ' active' : ''}`}
+                              onClick={() => toggleUserFilter(member.id)}
+                            >
+                              <div className="filter-item-check">
+                                {isActive && <Icons.Check size={14} />}
+                              </div>
+                              {member.photoURL
+                                ? <img src={member.photoURL} alt="" className="filter-item-avatar" />
+                                : <span className="filter-item-initials">{mInitials}</span>
+                              }
+                              <span>{member.firstName} {member.lastName}{isMe ? ' (You)' : ''}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })
+                ) : (
+                  // No households — just show the user
+                  user && (
                     <div
-                      key={member.id}
-                      className={`filter-item${isActive ? ' active' : ''}`}
-                      onClick={() => toggleUserFilter(member.id)}
+                      className={`filter-item${activeUserIds.has(user.id) ? ' active' : ''}`}
+                      onClick={() => toggleUserFilter(user.id)}
                     >
                       <div className="filter-item-check">
-                        {isActive && <Icons.Check size={14} />}
+                        {activeUserIds.has(user.id) && <Icons.Check size={14} />}
                       </div>
-                      {member.photoURL
-                        ? <img src={member.photoURL} alt="" className="filter-item-avatar" />
-                        : <span className="filter-item-initials">{mInitials}</span>
+                      {user.photoURL
+                        ? <img src={user.photoURL} alt="" className="filter-item-avatar" />
+                        : <span className="filter-item-initials">{user.firstName?.[0]}{user.lastName?.[0]}</span>
                       }
-                      <span>{member.firstName} {member.lastName}{isMe ? ' (You)' : ''}</span>
+                      <span>{user.firstName} {user.lastName} (You)</span>
                     </div>
-                  );
-                })}
+                  )
+                )}
               </div>
             </>
           )}
