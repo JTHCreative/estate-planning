@@ -223,23 +223,22 @@ export default function Settings() {
           <h4>Profile</h4>
           <div className="profile-section">
             <div className="profile-pic-container">
-              <div className="profile-pic">
+              <div className="profile-pic" onClick={() => fileInputRef.current?.click()} role="button" title="Change photo">
                 {user?.photoURL
                   ? <img src={user.photoURL} alt={user.firstName} />
                   : <span>{initials}</span>
                 }
+                <div className="profile-pic-overlay">
+                  <Camera size={20} />
+                  <span>{user?.photoURL ? 'Change' : 'Add'}</span>
+                </div>
               </div>
-              <div className="profile-pic-actions">
-                <button className="btn btn-sm btn-primary" onClick={() => fileInputRef.current?.click()}>
-                  <Camera size={14} /> {user?.photoURL ? 'Change' : 'Add Photo'}
+              {user?.photoURL && (
+                <button className="profile-pic-remove" onClick={handleRemovePhoto} title="Remove photo">
+                  <X size={14} />
                 </button>
-                {user?.photoURL && (
-                  <button className="btn btn-sm btn-danger" onClick={handleRemovePhoto}>
-                    <X size={14} /> Remove
-                  </button>
-                )}
-                <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoUpload} style={{ display: 'none' }} />
-              </div>
+              )}
+              <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoUpload} style={{ display: 'none' }} />
             </div>
             <div className="profile-info">
               {/* Name */}
