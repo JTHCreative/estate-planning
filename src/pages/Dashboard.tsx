@@ -1,9 +1,10 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import {
   CATEGORIES, getInstitutions, getAccounts,
   addInstitution, updateInstitution, deleteInstitution,
   addAccount, updateAccount, deleteAccount, verifyPin, getUserProfile,
+  deriveKeyFromPin, encryptWithKey, decryptWithKey, isEncrypted,
 } from '../lib/storage';
 import type { Institution, Account } from '../lib/storage';
 import {
@@ -123,8 +124,14 @@ export default function Dashboard() {
   const [unlockedUsers, setUnlockedUsers] = useState<Set<string>>(new Set());
   const [pinPromptUserId, setPinPromptUserId] = useState<string | null>(null);
   const [pinPromptFieldKey, setPinPromptFieldKey] = useState<string | null>(null);
+  const [pinPromptForSave, setPinPromptForSave] = useState(false);
   const [pinInput, setPinInput] = useState('');
   const [pinPromptError, setPinPromptError] = useState('');
+
+  // Cache derived AES keys per user (in a ref so it persists across renders without triggering re-renders)
+  const userKeysRef = useRef<Map<string, CryptoKey>>(new Map());
+  // Cache decrypted field values: key = `${acctId}-${fieldName}`, value = decrypted plaintext
+  const [decryptedFields, setDecryptedFields] = useState<Map<string, string>>(new Map());
 
   // Derived: selected category object
   const selectedCategory = selectedCategoryId ? CATEGORIES.find(c => c.id === selectedCategoryId) || null : null;
@@ -218,6 +225,36 @@ export default function Dashboard() {
   };
 
 
+  // Decrypt all encrypted fields visible for the given owner using their cached key
+  const decryptOwnerFields = async (ownerId: string) => {
+    const key = userKeysRef.current.get(ownerId);
+    if (!key) return;
+    const newDecrypted = new Map(decryptedFields);
+    const ownerAccts = allAccounts.filter(a => a.userId === ownerId);
+    for (const acct of ownerAccts) {
+      const fields: Array<['acct' | 'rtn' | 'user' | 'pass', string | null]> = [
+        ['acct', acct.accountNumber],
+        ['rtn', acct.routingNumber],
+        ['user', acct.username],
+        ['pass', acct.passwordEncrypted],
+      ];
+      for (const [tag, val] of fields) {
+        if (val && isEncrypted(val)) {
+          const plain = await decryptWithKey(val, key);
+          newDecrypted.set(`${acct.id}-${tag}`, plain);
+        }
+      }
+    }
+    setDecryptedFields(newDecrypted);
+  };
+
+  // Get the plain (or decrypted) value for a sensitive field
+  const getFieldValue = (acctId: string, tag: string, raw: string | null): string => {
+    if (!raw) return '';
+    if (!isEncrypted(raw)) return raw;
+    return decryptedFields.get(`${acctId}-${tag}`) || raw;
+  };
+
   // Handlers: field masking
   const toggleField = async (key: string, ownerId: string) => {
     // If currently revealed, just hide it
@@ -244,6 +281,7 @@ export default function Dashboard() {
     // PIN required — show the prompt
     setPinPromptUserId(ownerId);
     setPinPromptFieldKey(key);
+    setPinPromptForSave(false);
     setPinInput('');
     setPinPromptError('');
   };
@@ -258,14 +296,32 @@ export default function Dashboard() {
       setPinInput('');
       return;
     }
+    // Derive and cache the AES key for this user
+    const key = await deriveKeyFromPin(pinInput);
+    userKeysRef.current.set(pinPromptUserId, key);
     setUnlockedUsers(prev => new Set(prev).add(pinPromptUserId));
+
+    // Decrypt all visible fields for this user
+    await decryptOwnerFields(pinPromptUserId);
+
     if (pinPromptFieldKey) {
       setRevealedFields(prev => new Set(prev).add(pinPromptFieldKey));
     }
+
+    const wasForSave = pinPromptForSave;
     setPinPromptUserId(null);
     setPinPromptFieldKey(null);
+    setPinPromptForSave(false);
     setPinInput('');
+
+    // If this was triggered by a save attempt, retry the save
+    if (wasForSave) {
+      setTimeout(() => savePendingAccountRef.current?.(), 0);
+    }
   };
+
+  // Ref to allow PIN unlock to retry an account save
+  const savePendingAccountRef = useRef<(() => void) | null>(null);
 
   const maskValue = (value: string) => {
     if (value.length <= 4) return '••••';
@@ -320,14 +376,38 @@ export default function Dashboard() {
   };
 
   // Account CRUD
-  const handleAddAccount = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const performAccountSave = async () => {
     if (!user || !selectedInstitutionId) return;
+
+    // Encrypt sensitive fields if user has a PIN set
+    let acctNum = acctForm.accountNumber || null;
+    let rtnNum = acctForm.routingNumber || null;
+    let username = acctForm.username || null;
+    let password = acctForm.password || null;
+
+    if (user.hasPin) {
+      const key = userKeysRef.current.get(user.id);
+      if (!key) {
+        // Need to prompt for PIN to derive key
+        savePendingAccountRef.current = () => { performAccountSave(); };
+        setPinPromptUserId(user.id);
+        setPinPromptFieldKey(null);
+        setPinPromptForSave(true);
+        setPinInput('');
+        setPinPromptError('');
+        return;
+      }
+      if (acctNum) acctNum = await encryptWithKey(acctNum, key);
+      if (rtnNum) rtnNum = await encryptWithKey(rtnNum, key);
+      if (username) username = await encryptWithKey(username, key);
+      if (password) password = await encryptWithKey(password, key);
+    }
+
     if (editingAcct) {
       await updateAccount(editingAcct.id, {
         accountName: acctForm.accountName, accountType: acctForm.accountType || null,
-        accountNumber: acctForm.accountNumber || null, routingNumber: acctForm.routingNumber || null,
-        username: acctForm.username || null, passwordEncrypted: acctForm.password || null,
+        accountNumber: acctNum, routingNumber: rtnNum,
+        username: username, passwordEncrypted: password,
         url: acctForm.url || null, contactName: acctForm.contactName || null,
         contactPhone: acctForm.contactPhone || null, contactEmail: acctForm.contactEmail || null,
         estimatedValue: acctForm.estimatedValue || null, beneficiary: acctForm.beneficiary || null,
@@ -337,9 +417,9 @@ export default function Dashboard() {
     } else {
       await addAccount(user.id, {
         institutionId: selectedInstitutionId, accountName: acctForm.accountName,
-        accountType: acctForm.accountType || null, accountNumber: acctForm.accountNumber || null,
-        routingNumber: acctForm.routingNumber || null, username: acctForm.username || null,
-        passwordEncrypted: acctForm.password || null, url: acctForm.url || null,
+        accountType: acctForm.accountType || null, accountNumber: acctNum,
+        routingNumber: rtnNum, username: username,
+        passwordEncrypted: password, url: acctForm.url || null,
         contactName: acctForm.contactName || null, contactPhone: acctForm.contactPhone || null,
         contactEmail: acctForm.contactEmail || null, estimatedValue: acctForm.estimatedValue || null,
         beneficiary: acctForm.beneficiary || null, notes: acctForm.notes || null,
@@ -347,8 +427,16 @@ export default function Dashboard() {
     }
     resetAcctForm();
     setShowAcctForm(false);
+    savePendingAccountRef.current = null;
     await loadCategoryData();
     await loadAllData();
+    // Re-decrypt visible fields for our user since data has been refreshed
+    if (user.hasPin) await decryptOwnerFields(user.id);
+  };
+
+  const handleAddAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await performAccountSave();
   };
 
   const handleDeleteAccount = async (id: string) => {
@@ -358,11 +446,38 @@ export default function Dashboard() {
     await loadAllData();
   };
 
-  const startEditAcct = (acct: Account) => {
+  const startEditAcct = async (acct: Account) => {
+    // For encrypted accounts, we need the user's key to decrypt fields for editing
+    let acctNum = acct.accountNumber || '';
+    let rtnNum = acct.routingNumber || '';
+    let username = acct.username || '';
+    let password = acct.passwordEncrypted || '';
+
+    const hasEncrypted = isEncrypted(acct.accountNumber) || isEncrypted(acct.routingNumber)
+      || isEncrypted(acct.username) || isEncrypted(acct.passwordEncrypted);
+
+    if (hasEncrypted) {
+      const key = userKeysRef.current.get(acct.userId);
+      if (!key) {
+        // Need PIN to decrypt before editing
+        setPinPromptUserId(acct.userId);
+        setPinPromptFieldKey(null);
+        setPinPromptForSave(false);
+        savePendingAccountRef.current = () => { startEditAcct(acct); };
+        setPinInput('');
+        setPinPromptError('');
+        return;
+      }
+      if (isEncrypted(acctNum)) acctNum = await decryptWithKey(acctNum, key);
+      if (isEncrypted(rtnNum)) rtnNum = await decryptWithKey(rtnNum, key);
+      if (isEncrypted(username)) username = await decryptWithKey(username, key);
+      if (isEncrypted(password)) password = await decryptWithKey(password, key);
+    }
+
     setAcctForm({
       accountName: acct.accountName, accountType: acct.accountType || '',
-      accountNumber: acct.accountNumber || '', routingNumber: acct.routingNumber || '',
-      username: acct.username || '', password: acct.passwordEncrypted || '',
+      accountNumber: acctNum, routingNumber: rtnNum,
+      username: username, password: password,
       url: acct.url || '', contactName: acct.contactName || '',
       contactPhone: acct.contactPhone || '', contactEmail: acct.contactEmail || '',
       estimatedValue: acct.estimatedValue || '', beneficiary: acct.beneficiary || '',
@@ -613,50 +728,70 @@ export default function Dashboard() {
                             )}
                           </div>
                           <div className="account-details">
-                            {acct.accountNumber && (
-                              <div>
-                                <label>Account #:</label>
-                                <span className="password-field">
-                                  {revealedFields.has(`${acct.id}-acct`) ? acct.accountNumber : maskValue(acct.accountNumber)}
-                                  <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-acct`, acct.userId)}>
-                                    {revealedFields.has(`${acct.id}-acct`) ? <EyeOff size={14} /> : <Eye size={14} />}
-                                  </button>
-                                </span>
-                              </div>
-                            )}
-                            {acct.routingNumber && (
-                              <div>
-                                <label>Routing #:</label>
-                                <span className="password-field">
-                                  {revealedFields.has(`${acct.id}-rtn`) ? acct.routingNumber : maskValue(acct.routingNumber)}
-                                  <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-rtn`, acct.userId)}>
-                                    {revealedFields.has(`${acct.id}-rtn`) ? <EyeOff size={14} /> : <Eye size={14} />}
-                                  </button>
-                                </span>
-                              </div>
-                            )}
-                            {acct.username && (
-                              <div>
-                                <label>Username:</label>
-                                <span className="password-field">
-                                  {revealedFields.has(`${acct.id}-user`) ? acct.username : maskValue(acct.username)}
-                                  <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-user`, acct.userId)}>
-                                    {revealedFields.has(`${acct.id}-user`) ? <EyeOff size={14} /> : <Eye size={14} />}
-                                  </button>
-                                </span>
-                              </div>
-                            )}
-                            {acct.passwordEncrypted && (
-                              <div>
-                                <label>Password:</label>
-                                <span className="password-field">
-                                  {revealedFields.has(`${acct.id}-pass`) ? acct.passwordEncrypted : '••••••••'}
-                                  <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-pass`, acct.userId)}>
-                                    {revealedFields.has(`${acct.id}-pass`) ? <EyeOff size={14} /> : <Eye size={14} />}
-                                  </button>
-                                </span>
-                              </div>
-                            )}
+                            {acct.accountNumber && (() => {
+                              const plain = getFieldValue(acct.id, 'acct', acct.accountNumber);
+                              const isEnc = isEncrypted(acct.accountNumber);
+                              const canRead = !isEnc || decryptedFields.has(`${acct.id}-acct`);
+                              return (
+                                <div>
+                                  <label>Account #:</label>
+                                  <span className="password-field">
+                                    {revealedFields.has(`${acct.id}-acct`) && canRead ? plain : (canRead ? maskValue(plain) : '••••••••')}
+                                    <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-acct`, acct.userId)}>
+                                      {revealedFields.has(`${acct.id}-acct`) ? <EyeOff size={14} /> : <Eye size={14} />}
+                                    </button>
+                                  </span>
+                                </div>
+                              );
+                            })()}
+                            {acct.routingNumber && (() => {
+                              const plain = getFieldValue(acct.id, 'rtn', acct.routingNumber);
+                              const isEnc = isEncrypted(acct.routingNumber);
+                              const canRead = !isEnc || decryptedFields.has(`${acct.id}-rtn`);
+                              return (
+                                <div>
+                                  <label>Routing #:</label>
+                                  <span className="password-field">
+                                    {revealedFields.has(`${acct.id}-rtn`) && canRead ? plain : (canRead ? maskValue(plain) : '••••••••')}
+                                    <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-rtn`, acct.userId)}>
+                                      {revealedFields.has(`${acct.id}-rtn`) ? <EyeOff size={14} /> : <Eye size={14} />}
+                                    </button>
+                                  </span>
+                                </div>
+                              );
+                            })()}
+                            {acct.username && (() => {
+                              const plain = getFieldValue(acct.id, 'user', acct.username);
+                              const isEnc = isEncrypted(acct.username);
+                              const canRead = !isEnc || decryptedFields.has(`${acct.id}-user`);
+                              return (
+                                <div>
+                                  <label>Username:</label>
+                                  <span className="password-field">
+                                    {revealedFields.has(`${acct.id}-user`) && canRead ? plain : (canRead ? maskValue(plain) : '••••••••')}
+                                    <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-user`, acct.userId)}>
+                                      {revealedFields.has(`${acct.id}-user`) ? <EyeOff size={14} /> : <Eye size={14} />}
+                                    </button>
+                                  </span>
+                                </div>
+                              );
+                            })()}
+                            {acct.passwordEncrypted && (() => {
+                              const plain = getFieldValue(acct.id, 'pass', acct.passwordEncrypted);
+                              const isEnc = isEncrypted(acct.passwordEncrypted);
+                              const canRead = !isEnc || decryptedFields.has(`${acct.id}-pass`);
+                              return (
+                                <div>
+                                  <label>Password:</label>
+                                  <span className="password-field">
+                                    {revealedFields.has(`${acct.id}-pass`) && canRead ? plain : '••••••••'}
+                                    <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-pass`, acct.userId)}>
+                                      {revealedFields.has(`${acct.id}-pass`) ? <EyeOff size={14} /> : <Eye size={14} />}
+                                    </button>
+                                  </span>
+                                </div>
+                              );
+                            })()}
                             {acct.url && <div><label>URL:</label> <a href={acct.url.startsWith('http') ? acct.url : `https://${acct.url}`} target="_blank" rel="noreferrer">{acct.url}</a></div>}
                             {acct.estimatedValue && <div><label>Value:</label> <span>{acct.estimatedValue}</span></div>}
                             {acct.beneficiary && <div><label>Beneficiary:</label> <span>{acct.beneficiary}</span></div>}

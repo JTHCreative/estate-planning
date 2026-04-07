@@ -83,6 +83,70 @@ export async function clearPin(uid: string): Promise<void> {
   await updateDoc(doc(db, 'users', uid), { pinHash: null });
 }
 
+// --- Field encryption (AES-GCM with PIN-derived key) ---
+
+const ENCRYPTION_SALT = new TextEncoder().encode('estate-planning-aes-salt-v1');
+
+export async function deriveKeyFromPin(pin: string): Promise<CryptoKey> {
+  const enc = new TextEncoder();
+  const baseKey = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(pin),
+    'PBKDF2',
+    false,
+    ['deriveKey']
+  );
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: ENCRYPTION_SALT, iterations: 100000, hash: 'SHA-256' },
+    baseKey,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let s = '';
+  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+  return btoa(s);
+}
+
+function base64ToBytes(b64: string): Uint8Array {
+  const s = atob(b64);
+  const bytes = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) bytes[i] = s.charCodeAt(i);
+  return bytes;
+}
+
+export async function encryptWithKey(plaintext: string, key: CryptoKey): Promise<string> {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const enc = new TextEncoder().encode(plaintext);
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc);
+  return `enc:${bytesToBase64(iv)}:${bytesToBase64(new Uint8Array(ct))}`;
+}
+
+export async function decryptWithKey(value: string, key: CryptoKey): Promise<string> {
+  if (!isEncrypted(value)) return value;
+  const parts = value.split(':');
+  if (parts.length !== 3) return value;
+  const iv = base64ToBytes(parts[1]);
+  const ct = base64ToBytes(parts[2]);
+  try {
+    const decrypted = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: iv as BufferSource },
+      key,
+      ct as BufferSource,
+    );
+    return new TextDecoder().decode(decrypted);
+  } catch {
+    return '[decryption failed]';
+  }
+}
+
+export function isEncrypted(value: string | null | undefined): boolean {
+  return typeof value === 'string' && value.startsWith('enc:');
+}
+
 // --- User Profiles ---
 
 export async function createUserProfile(uid: string, email: string, firstName: string, lastName: string): Promise<UserProfile> {
