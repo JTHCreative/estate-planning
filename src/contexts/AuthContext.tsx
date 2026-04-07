@@ -5,6 +5,10 @@ import {
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  updatePassword as fbUpdatePassword,
+  updateEmail as fbUpdateEmail,
 } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 import {
@@ -37,6 +41,9 @@ interface AuthContextType {
   leaveHousehold: () => Promise<void>;
   removeMember: (memberId: string) => Promise<void>;
   updatePhoto: (photoURL: string | null) => Promise<void>;
+  updateName: (firstName: string, lastName: string) => Promise<void>;
+  updateUserEmail: (newEmail: string, currentPassword: string) => Promise<void>;
+  updateUserPassword: (currentPassword: string, newPassword: string) => Promise<void>;
   setUserPin: (pin: string) => Promise<void>;
   clearUserPin: () => Promise<void>;
   loading: boolean;
@@ -202,6 +209,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(prev => prev ? { ...prev, photoURL } : prev);
   };
 
+  const updateName = async (firstName: string, lastName: string) => {
+    if (!user) return;
+    await updateUserProfile(user.id, { firstName, lastName });
+    setUser(prev => prev ? { ...prev, firstName, lastName } : prev);
+  };
+
+  const updateUserEmail = async (newEmail: string, currentPassword: string) => {
+    if (!user || !auth.currentUser) return;
+    // Re-authenticate first
+    const cred = EmailAuthProvider.credential(user.email, currentPassword);
+    await reauthenticateWithCredential(auth.currentUser, cred);
+    // Update Firebase Auth email
+    await fbUpdateEmail(auth.currentUser, newEmail);
+    // Update Firestore profile
+    await updateUserProfile(user.id, { email: newEmail.toLowerCase() });
+    setUser(prev => prev ? { ...prev, email: newEmail.toLowerCase() } : prev);
+  };
+
+  const updateUserPassword = async (currentPassword: string, newPassword: string) => {
+    if (!user || !auth.currentUser) return;
+    const cred = EmailAuthProvider.credential(user.email, currentPassword);
+    await reauthenticateWithCredential(auth.currentUser, cred);
+    await fbUpdatePassword(auth.currentUser, newPassword);
+  };
+
   const setUserPin = async (pin: string) => {
     if (!user) return;
     await setPin(user.id, pin);
@@ -215,7 +247,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, refreshUser, joinHousehold, leaveHousehold, removeMember, updatePhoto, setUserPin, clearUserPin, loading }}>
+    <AuthContext.Provider value={{ user, login, register, logout, refreshUser, joinHousehold, leaveHousehold, removeMember, updatePhoto, updateName, updateUserEmail, updateUserPassword, setUserPin, clearUserPin, loading }}>
       {children}
     </AuthContext.Provider>
   );

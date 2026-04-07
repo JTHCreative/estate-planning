@@ -1,10 +1,10 @@
 import { useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { Copy, Check, Camera, X, Sun, Moon, UserPlus, UserMinus, Users, LogOut, Lock, KeyRound, User as UserIcon } from 'lucide-react';
+import { Copy, Check, Camera, X, Sun, Moon, UserPlus, UserMinus, Users, LogOut, Lock, KeyRound, User as UserIcon, Save, Edit3 } from 'lucide-react';
 
 export default function Settings() {
-  const { user, joinHousehold, leaveHousehold, removeMember, updatePhoto, refreshUser, setUserPin, clearUserPin } = useAuth();
+  const { user, joinHousehold, leaveHousehold, removeMember, updatePhoto, refreshUser, setUserPin, clearUserPin, updateName, updateUserEmail, updateUserPassword } = useAuth();
   const { theme, setTheme } = useTheme();
   const [inviteCode, setInviteCode] = useState('');
   const [message, setMessage] = useState('');
@@ -16,6 +16,87 @@ export default function Settings() {
   const [pinError, setPinError] = useState('');
   const [pinMessage, setPinMessage] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Profile edit state
+  const [editingName, setEditingName] = useState(false);
+  const [firstNameInput, setFirstNameInput] = useState('');
+  const [lastNameInput, setLastNameInput] = useState('');
+  const [editingEmail, setEditingEmail] = useState(false);
+  const [emailInput, setEmailInput] = useState('');
+  const [emailPasswordInput, setEmailPasswordInput] = useState('');
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [currentPasswordInput, setCurrentPasswordInput] = useState('');
+  const [newPasswordInput, setNewPasswordInput] = useState('');
+  const [confirmPasswordInput, setConfirmPasswordInput] = useState('');
+  const [profileMessage, setProfileMessage] = useState('');
+  const [profileError, setProfileError] = useState('');
+
+  const startEditName = () => {
+    setFirstNameInput(user?.firstName || '');
+    setLastNameInput(user?.lastName || '');
+    setEditingName(true);
+    setProfileError('');
+    setProfileMessage('');
+  };
+
+  const handleSaveName = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setProfileError('');
+    setProfileMessage('');
+    try {
+      await updateName(firstNameInput, lastNameInput);
+      setProfileMessage('Name updated');
+      setEditingName(false);
+    } catch (err: any) {
+      setProfileError(err.message);
+    }
+  };
+
+  const startEditEmail = () => {
+    setEmailInput(user?.email || '');
+    setEmailPasswordInput('');
+    setEditingEmail(true);
+    setProfileError('');
+    setProfileMessage('');
+  };
+
+  const handleSaveEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setProfileError('');
+    setProfileMessage('');
+    try {
+      await updateUserEmail(emailInput, emailPasswordInput);
+      setProfileMessage('Email updated');
+      setEditingEmail(false);
+      setEmailPasswordInput('');
+    } catch (err: any) {
+      setProfileError(err.message);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setProfileError('');
+    setProfileMessage('');
+    if (newPasswordInput !== confirmPasswordInput) {
+      setProfileError('New passwords do not match');
+      return;
+    }
+    if (newPasswordInput.length < 8) {
+      setProfileError('Password must be at least 8 characters');
+      return;
+    }
+    try {
+      await updateUserPassword(currentPasswordInput, newPasswordInput);
+      setProfileMessage('Password updated');
+      setShowPasswordForm(false);
+      setCurrentPasswordInput('');
+      setNewPasswordInput('');
+      setConfirmPasswordInput('');
+    } catch (err: any) {
+      setProfileError(err.message);
+    }
+  };
 
   const handleSetPin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -161,8 +242,71 @@ export default function Settings() {
               </div>
             </div>
             <div className="profile-info">
-              <div><label>Name:</label> <span>{user?.firstName} {user?.lastName}</span></div>
-              <div><label>Email:</label> <span>{user?.email}</span></div>
+              {/* Name */}
+              {editingName ? (
+                <form onSubmit={handleSaveName} className="profile-edit-form">
+                  <label>Name</label>
+                  <div className="form-row">
+                    <input type="text" value={firstNameInput} onChange={e => setFirstNameInput(e.target.value)} placeholder="First name" required />
+                    <input type="text" value={lastNameInput} onChange={e => setLastNameInput(e.target.value)} placeholder="Last name" required />
+                  </div>
+                  <div className="form-actions">
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditingName(false)}>Cancel</button>
+                    <button type="submit" className="btn btn-primary btn-sm"><Save size={14} /> Save</button>
+                  </div>
+                </form>
+              ) : (
+                <div className="profile-row">
+                  <label>Name:</label>
+                  <span>{user?.firstName} {user?.lastName}</span>
+                  <button className="btn btn-icon btn-sm" onClick={startEditName}><Edit3 size={14} /></button>
+                </div>
+              )}
+
+              {/* Email */}
+              {editingEmail ? (
+                <form onSubmit={handleSaveEmail} className="profile-edit-form">
+                  <label>Email</label>
+                  <input type="email" value={emailInput} onChange={e => setEmailInput(e.target.value)} required />
+                  <label>Current Password (required)</label>
+                  <input type="password" value={emailPasswordInput} onChange={e => setEmailPasswordInput(e.target.value)} placeholder="Enter your current password" required />
+                  <div className="form-actions">
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditingEmail(false)}>Cancel</button>
+                    <button type="submit" className="btn btn-primary btn-sm"><Save size={14} /> Save</button>
+                  </div>
+                </form>
+              ) : (
+                <div className="profile-row">
+                  <label>Email:</label>
+                  <span>{user?.email}</span>
+                  <button className="btn btn-icon btn-sm" onClick={startEditEmail}><Edit3 size={14} /></button>
+                </div>
+              )}
+
+              {/* Password */}
+              {showPasswordForm ? (
+                <form onSubmit={handleChangePassword} className="profile-edit-form">
+                  <label>Current Password</label>
+                  <input type="password" value={currentPasswordInput} onChange={e => setCurrentPasswordInput(e.target.value)} required />
+                  <label>New Password</label>
+                  <input type="password" value={newPasswordInput} onChange={e => setNewPasswordInput(e.target.value)} required />
+                  <label>Confirm New Password</label>
+                  <input type="password" value={confirmPasswordInput} onChange={e => setConfirmPasswordInput(e.target.value)} required />
+                  <div className="form-actions">
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowPasswordForm(false)}>Cancel</button>
+                    <button type="submit" className="btn btn-primary btn-sm"><Save size={14} /> Update Password</button>
+                  </div>
+                </form>
+              ) : (
+                <div className="profile-row">
+                  <label>Password:</label>
+                  <span>••••••••</span>
+                  <button className="btn btn-icon btn-sm" onClick={() => { setShowPasswordForm(true); setProfileError(''); setProfileMessage(''); }}><Edit3 size={14} /></button>
+                </div>
+              )}
+
+              {profileMessage && <div className="success-msg">{profileMessage}</div>}
+              {profileError && <div className="error-msg">{profileError}</div>}
             </div>
           </div>
         </div>
