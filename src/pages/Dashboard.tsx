@@ -120,6 +120,10 @@ export default function Dashboard() {
   // Reveal state for masked fields
   const [revealedFields, setRevealedFields] = useState<Set<string>>(new Set());
 
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearchResults, setShowSearchResults] = useState(false);
+
   // PIN unlock state - which user IDs are currently unlocked for sensitive viewing
   const [unlockedUsers, setUnlockedUsers] = useState<Set<string>>(new Set());
   const [pinPromptUserId, setPinPromptUserId] = useState<string | null>(null);
@@ -224,6 +228,47 @@ export default function Dashboard() {
     setRevealedFields(new Set());
   };
 
+  // Search results: match institutions and accounts by name
+  const searchResults = (() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return [] as Array<{ type: 'institution' | 'account'; institution: InstitutionWithOwner; account?: AccountWithOwner }>;
+
+    const results: Array<{ type: 'institution' | 'account'; institution: InstitutionWithOwner; account?: AccountWithOwner }> = [];
+
+    // Match institutions visible to the active filter
+    for (const inst of allInstitutions) {
+      if (!activeUserIds.has(inst.userId)) continue;
+      if (inst.name.toLowerCase().includes(q)) {
+        results.push({ type: 'institution', institution: inst });
+      }
+    }
+
+    // Match accounts (and include their institution)
+    for (const acct of allAccounts) {
+      if (!activeUserIds.has(acct.userId)) continue;
+      if (acct.accountName.toLowerCase().includes(q) || (acct.accountType || '').toLowerCase().includes(q)) {
+        const inst = allInstitutions.find(i => i.id === acct.institutionId);
+        if (inst) results.push({ type: 'account', institution: inst, account: acct });
+      }
+    }
+
+    return results.slice(0, 12);
+  })();
+
+  // Auto-navigate to a specific institution (and optionally an account within it)
+  const navigateToInstitution = (inst: InstitutionWithOwner, acctId?: string) => {
+    // Find which root group this category belongs to
+    const rootIdx = rootCategories.findIndex(r => r.categoryIds.includes(inst.categoryId));
+    if (rootIdx === -1) return;
+    setSelectedRoot(rootIdx);
+    setSelectedCategoryId(inst.categoryId);
+    setSelectedInstitutionId(inst.id);
+    setRevealedFields(new Set());
+    setSearchQuery('');
+    setShowSearchResults(false);
+    // If we navigated to a specific account, mark it for highlight (optional future use)
+    void acctId;
+  };
 
   // Decrypt all encrypted fields visible for the given owner using their cached key
   const decryptOwnerFields = async (ownerId: string) => {
@@ -495,6 +540,67 @@ export default function Dashboard() {
       {/* Dashboard Header */}
       <div className="dash-header">
         <h2>Dashboard</h2>
+        <div className="dash-header-actions">
+        <div className="search-wrapper">
+          <div className="search-input-wrap">
+            <Icons.Search size={16} className="search-icon" />
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Search institutions or accounts..."
+              value={searchQuery}
+              onChange={e => { setSearchQuery(e.target.value); setShowSearchResults(true); }}
+              onFocus={() => setShowSearchResults(true)}
+            />
+            {searchQuery && (
+              <button className="search-clear" onClick={() => { setSearchQuery(''); setShowSearchResults(false); }}>
+                <X size={14} />
+              </button>
+            )}
+          </div>
+          {showSearchResults && searchQuery && (
+            <>
+              <div className="filter-backdrop" onClick={() => setShowSearchResults(false)} />
+              <div className="search-results">
+                {searchResults.length === 0 ? (
+                  <div className="search-empty">No matches found</div>
+                ) : (
+                  searchResults.map((r, idx) => {
+                    const owner = allMembers.find(m => m.id === r.institution.userId);
+                    const ownerInitials = owner ? `${owner.firstName?.[0] || ''}${owner.lastName?.[0] || ''}`.toUpperCase() : '';
+                    const cat = CATEGORIES.find(c => c.id === r.institution.categoryId);
+                    return (
+                      <div
+                        key={idx}
+                        className="search-result-item"
+                        onClick={() => navigateToInstitution(r.institution, r.account?.id)}
+                      >
+                        <div className="search-result-avatar">
+                          {owner?.photoURL
+                            ? <img src={owner.photoURL} alt="" />
+                            : <span>{ownerInitials}</span>
+                          }
+                        </div>
+                        <div className="search-result-info">
+                          <div className="search-result-title">
+                            {r.type === 'account' ? r.account!.accountName : r.institution.name}
+                          </div>
+                          <div className="search-result-meta">
+                            {r.type === 'account' && (
+                              <>{r.institution.name} · </>
+                            )}
+                            {cat?.name}
+                          </div>
+                        </div>
+                        <span className="search-result-type">{r.type === 'account' ? 'Account' : 'Institution'}</span>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </>
+          )}
+        </div>
         <div className="filter-wrapper">
           <button className="btn btn-filter" onClick={() => setShowFilterDropdown(!showFilterDropdown)}>
             <Icons.Filter size={16} />
@@ -537,6 +643,7 @@ export default function Dashboard() {
               </div>
             </>
           )}
+        </div>
         </div>
       </div>
 
