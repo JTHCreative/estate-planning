@@ -137,6 +137,7 @@ export default function Settings() {
 
       <div className="settings-section">
         <h3><UserIcon size={20} /> Account Settings</h3>
+
         <div className="settings-subsection">
           <h4>Profile</h4>
           <div className="profile-section">
@@ -165,6 +166,64 @@ export default function Settings() {
             </div>
           </div>
         </div>
+
+        <div className="settings-subsection">
+          <h4><Lock size={14} /> Security PIN</h4>
+          <p className="section-desc">
+            Set a 6-digit PIN to protect sensitive information like passwords and account numbers.
+            Household members will need your PIN to view your sensitive fields.
+          </p>
+
+          {user?.hasPin ? (
+            <div className="partner-status linked">
+              <KeyRound size={18} />
+              <div>
+                <strong>PIN is set</strong>
+                <span>Your sensitive fields are protected</span>
+              </div>
+              <button className="btn btn-sm btn-danger" onClick={handleClearPin}>
+                <X size={14} /> Remove
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleSetPin} className="pin-form">
+              <div className="form-group">
+                <label>New 6-digit PIN</label>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  pattern="[0-9]{6}"
+                  maxLength={6}
+                  value={pinValue}
+                  onChange={e => setPinValue(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="••••••"
+                  className="pin-input"
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Confirm PIN</label>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  pattern="[0-9]{6}"
+                  maxLength={6}
+                  value={confirmPin}
+                  onChange={e => setConfirmPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="••••••"
+                  className="pin-input"
+                  required
+                />
+              </div>
+              <button type="submit" className="btn btn-primary">
+                <Lock size={16} /> Set PIN
+              </button>
+            </form>
+          )}
+
+          {pinMessage && <div className="success-msg">{pinMessage}</div>}
+          {pinError && <div className="error-msg">{pinError}</div>}
+        </div>
       </div>
 
       <div className="settings-section">
@@ -190,64 +249,6 @@ export default function Settings() {
 
       </div>{/* end settings-left */}
       <div className="settings-right">
-
-      <div className="settings-section">
-        <h3><Lock size={20} /> Security PIN</h3>
-        <p className="section-desc">
-          Set a 6-digit PIN to protect sensitive information like passwords and account numbers.
-          Household members will need your PIN to view your sensitive fields.
-        </p>
-
-        {user?.hasPin ? (
-          <div className="partner-status linked">
-            <KeyRound size={18} />
-            <div>
-              <strong>PIN is set</strong>
-              <span>Your sensitive fields are protected</span>
-            </div>
-            <button className="btn btn-sm btn-danger" onClick={handleClearPin}>
-              <X size={14} /> Remove
-            </button>
-          </div>
-        ) : (
-          <form onSubmit={handleSetPin} className="pin-form">
-            <div className="form-group">
-              <label>New 6-digit PIN</label>
-              <input
-                type="password"
-                inputMode="numeric"
-                pattern="[0-9]{6}"
-                maxLength={6}
-                value={pinValue}
-                onChange={e => setPinValue(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="••••••"
-                className="pin-input"
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label>Confirm PIN</label>
-              <input
-                type="password"
-                inputMode="numeric"
-                pattern="[0-9]{6}"
-                maxLength={6}
-                value={confirmPin}
-                onChange={e => setConfirmPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="••••••"
-                className="pin-input"
-                required
-              />
-            </div>
-            <button type="submit" className="btn btn-primary">
-              <Lock size={16} /> Set PIN
-            </button>
-          </form>
-        )}
-
-        {pinMessage && <div className="success-msg">{pinMessage}</div>}
-        {pinError && <div className="error-msg">{pinError}</div>}
-      </div>
 
       <div className="settings-section">
         <h3><Users size={20} /> Household Members</h3>
