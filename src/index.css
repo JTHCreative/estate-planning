@@ -1425,6 +1425,37 @@ a:hover { text-decoration: underline; }
 }
 
 /* Household Members */
+.household-card {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.household-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.household-card-header h4 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.household-card .household-members {
+  margin-bottom: 0;
+}
+
+.household-card .btn-danger-text {
+  margin-top: 12px;
+}
+
 .household-members {
   display: flex;
   flex-direction: column;
