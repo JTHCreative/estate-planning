@@ -568,10 +568,56 @@ a:hover { text-decoration: underline; }
   transition: all 0.15s;
 }
 
-.filter-item.active .filter-item-check {
+.filter-item.active .filter-item-check,
+.filter-item-check.active {
   background: var(--primary);
   border-color: var(--primary);
   color: #fff;
+}
+
+.filter-item-check.partial {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+/* Household groups in filter dropdown */
+.filter-household {
+  border-bottom: 1px solid var(--border);
+}
+
+.filter-household:last-child { border-bottom: none; }
+
+.filter-household-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: var(--bg-input);
+  cursor: pointer;
+}
+
+.filter-household-header:hover { background: var(--white-alpha-05); }
+
+.filter-household-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.filter-household-count {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--white-alpha-08);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.filter-household-member {
+  padding-left: 36px !important;
+  background: var(--bg-card);
 }
 
 .filter-item-avatar {
@@ -1429,23 +1475,48 @@ a:hover { text-decoration: underline; }
   background: var(--bg-input);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 16px;
+  padding: 18px;
   margin-bottom: 12px;
 }
 
 .household-card-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
+  gap: 8px;
+  margin-bottom: 14px;
 }
 
 .household-card-header h4 {
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  color: var(--text);
+  flex: 1;
+}
+
+.household-card-header .member-badge { margin-left: auto; }
+
+.household-rename-form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.household-rename-form input {
+  flex: 1;
+  padding: 6px 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+}
+
+.household-rename-form input:focus { border-color: var(--primary); }
+
+.household-invite-box {
+  margin-bottom: 14px;
 }
 
 .household-card .household-members {
@@ -1453,7 +1524,72 @@ a:hover { text-decoration: underline; }
 }
 
 .household-card .btn-danger-text {
+  margin-top: 14px;
+}
+
+.household-empty {
+  text-align: center;
+  padding: 32px 20px;
+  background: var(--bg-input);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 16px;
+}
+
+.household-empty-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  background: var(--primary-alpha-15);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.household-empty h4 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+
+.household-empty p {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+  max-width: 360px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.household-empty-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.household-create-form {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 18px;
+  margin-bottom: 16px;
+}
+
+.household-create-form h4 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.household-actions {
+  display: flex;
+  gap: 8px;
   margin-top: 12px;
+  flex-wrap: wrap;
 }
 
 .household-members {

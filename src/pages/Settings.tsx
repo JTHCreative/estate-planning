@@ -1,16 +1,21 @@
 import { useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { Copy, Check, Camera, X, Sun, Moon, UserPlus, UserMinus, Users, LogOut, Lock, KeyRound, User as UserIcon, Save, Edit3 } from 'lucide-react';
+import { Copy, Check, Camera, X, Sun, Moon, UserPlus, UserMinus, Users, LogOut, Lock, KeyRound, User as UserIcon, Save, Edit3, Home, Plus } from 'lucide-react';
 
 export default function Settings() {
-  const { user, joinHousehold, leaveHousehold, removeMember, updatePhoto, refreshUser, setUserPin, clearUserPin, updateName, updateUserEmail, updateUserPassword } = useAuth();
+  const { user, joinHousehold, createHousehold, renameHousehold, leaveHousehold, removeMember, updatePhoto, refreshUser, setUserPin, clearUserPin, updateName, updateUserEmail, updateUserPassword } = useAuth();
   const { theme, setTheme } = useTheme();
   const [inviteCode, setInviteCode] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  const [copied, setCopied] = useState(false);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showJoinForm, setShowJoinForm] = useState(false);
+  const [newHouseholdName, setNewHouseholdName] = useState('');
+  const [editingHouseholdId, setEditingHouseholdId] = useState<string | null>(null);
+  const [editHouseholdName, setEditHouseholdName] = useState('');
   const [pinValue, setPinValue] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
   const [pinError, setPinError] = useState('');
@@ -130,6 +135,38 @@ export default function Settings() {
     }
   };
 
+  const handleCreateHousehold = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setMessage('');
+    setLoading(true);
+    try {
+      await createHousehold(newHouseholdName || 'My Household');
+      setMessage('Household created!');
+      setNewHouseholdName('');
+      setShowCreateForm(false);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRenameHousehold = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingHouseholdId) return;
+    setError('');
+    setMessage('');
+    try {
+      await renameHousehold(editingHouseholdId, editHouseholdName);
+      setMessage('Household renamed');
+      setEditingHouseholdId(null);
+      setEditHouseholdName('');
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -139,6 +176,7 @@ export default function Settings() {
       await joinHousehold(inviteCode);
       setMessage('Joined household successfully!');
       setInviteCode('');
+      setShowJoinForm(false);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -169,10 +207,10 @@ export default function Settings() {
     }
   };
 
-  const copyCode = () => {
-    navigator.clipboard.writeText(user?.inviteCode || '');
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const copyCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedCode(code);
+    setTimeout(() => setCopiedCode(null), 2000);
   };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -398,27 +436,111 @@ export default function Settings() {
           You can be a member of multiple households (e.g. immediate family + parents). Data from all your households is combined in the dashboard.
         </p>
 
-        <div className="partner-code-box">
-          <label>Your Personal Invite Code</label>
-          <div className="code-display">
-            <code>{user?.inviteCode}</code>
-            <button className="btn btn-icon" onClick={copyCode}>
-              {copied ? <Check size={16} /> : <Copy size={16} />}
-            </button>
+        {/* Empty state */}
+        {(!user?.households || user.households.length === 0) && !showCreateForm && !showJoinForm && (
+          <div className="household-empty">
+            <div className="household-empty-icon"><Home size={32} /></div>
+            <h4>You're not in any households yet</h4>
+            <p>Create a new household to start sharing estate planning data, or join an existing household using an invite code.</p>
+            <div className="household-empty-actions">
+              <button className="btn btn-primary" onClick={() => { setShowCreateForm(true); setError(''); setMessage(''); }}>
+                <Plus size={16} /> Create Household
+              </button>
+              <button className="btn btn-ghost" onClick={() => { setShowJoinForm(true); setError(''); setMessage(''); }}>
+                <UserPlus size={16} /> Join Household
+              </button>
+            </div>
           </div>
-          <p className="hint">Share this code with family members so they can join your primary household.</p>
-        </div>
+        )}
+
+        {/* Create household form */}
+        {showCreateForm && (
+          <form onSubmit={handleCreateHousehold} className="household-create-form">
+            <h4>Create a New Household</h4>
+            <div className="form-group">
+              <label>Household Name</label>
+              <input
+                type="text"
+                value={newHouseholdName}
+                onChange={e => setNewHouseholdName(e.target.value)}
+                placeholder="e.g. The Smith Family"
+                autoFocus
+                required
+              />
+            </div>
+            <div className="form-actions">
+              <button type="button" className="btn btn-ghost" onClick={() => { setShowCreateForm(false); setNewHouseholdName(''); }}>Cancel</button>
+              <button type="submit" className="btn btn-primary" disabled={loading}>
+                <Plus size={16} /> {loading ? 'Creating...' : 'Create'}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* Join household form (when used as standalone, not always visible) */}
+        {showJoinForm && (
+          <form onSubmit={handleJoin} className="household-create-form">
+            <h4>Join an Existing Household</h4>
+            <div className="form-group">
+              <label>Invite Code</label>
+              <input
+                type="text"
+                value={inviteCode}
+                onChange={e => setInviteCode(e.target.value.toUpperCase())}
+                placeholder="e.g. A1B2C3D4"
+                autoFocus
+                required
+              />
+            </div>
+            <div className="form-actions">
+              <button type="button" className="btn btn-ghost" onClick={() => { setShowJoinForm(false); setInviteCode(''); }}>Cancel</button>
+              <button type="submit" className="btn btn-primary" disabled={loading}>
+                <UserPlus size={16} /> {loading ? 'Joining...' : 'Join'}
+              </button>
+            </div>
+          </form>
+        )}
 
         {/* List of households */}
-        {user?.households.map((hh, idx) => {
+        {user?.households.map(hh => {
           const isPrimary = hh.id === user.householdId;
           const others = hh.members.filter(m => m.id !== user.id);
+          const isEditingName = editingHouseholdId === hh.id;
           return (
             <div key={hh.id} className="household-card">
               <div className="household-card-header">
-                <h4>{isPrimary ? 'My Primary Household' : `Household ${idx + 1}`}</h4>
-                {isPrimary && <span className="member-badge">Primary</span>}
+                {isEditingName ? (
+                  <form onSubmit={handleRenameHousehold} className="household-rename-form">
+                    <input
+                      type="text"
+                      value={editHouseholdName}
+                      onChange={e => setEditHouseholdName(e.target.value)}
+                      autoFocus
+                    />
+                    <button type="submit" className="btn btn-icon"><Save size={14} /></button>
+                    <button type="button" className="btn btn-icon" onClick={() => setEditingHouseholdId(null)}><X size={14} /></button>
+                  </form>
+                ) : (
+                  <>
+                    <h4>{hh.name}</h4>
+                    <button className="btn btn-icon btn-sm" onClick={() => { setEditingHouseholdId(hh.id); setEditHouseholdName(hh.name); }} title="Rename household">
+                      <Edit3 size={12} />
+                    </button>
+                    {isPrimary && <span className="member-badge">Primary</span>}
+                  </>
+                )}
               </div>
+
+              <div className="partner-code-box household-invite-box">
+                <label>Invite Code</label>
+                <div className="code-display">
+                  <code>{hh.inviteCode}</code>
+                  <button className="btn btn-icon" onClick={() => copyCode(hh.inviteCode)}>
+                    {copiedCode === hh.inviteCode ? <Check size={16} /> : <Copy size={16} />}
+                  </button>
+                </div>
+              </div>
+
               <div className="household-members">
                 <div className="member-card you">
                   <div className="member-avatar">
@@ -447,44 +569,32 @@ export default function Settings() {
                         <strong>{member.firstName} {member.lastName}</strong>
                         <span>{member.email}</span>
                       </div>
-                      {isPrimary && (
-                        <button className="btn btn-sm btn-danger" onClick={() => handleRemove(member.id, `${member.firstName} ${member.lastName}`, hh.id)}>
-                          <UserMinus size={14} /> Remove
-                        </button>
-                      )}
+                      <button className="btn btn-sm btn-danger" onClick={() => handleRemove(member.id, `${member.firstName} ${member.lastName}`, hh.id)}>
+                        <UserMinus size={14} /> Remove
+                      </button>
                     </div>
                   );
                 })}
               </div>
-              {/* Leave button — hide for primary if it's the only household */}
-              {(!isPrimary || (user?.households.length || 0) > 1) && (
-                <button className="btn btn-ghost btn-danger-text" onClick={() => handleLeave(hh.id)}>
-                  <LogOut size={16} /> Leave this household
-                </button>
-              )}
+
+              <button className="btn btn-ghost btn-danger-text" onClick={() => handleLeave(hh.id)}>
+                <LogOut size={16} /> Leave this household
+              </button>
             </div>
           );
         })}
 
-        {/* Join another household */}
-        <div className="household-join">
-          <h4>Join Another Household</h4>
-          <p className="hint">Enter an invite code from a family member to join their household. You can be in multiple households at once.</p>
-          <form onSubmit={handleJoin} className="link-form">
-            <div className="input-group">
-              <input
-                type="text"
-                value={inviteCode}
-                onChange={e => setInviteCode(e.target.value.toUpperCase())}
-                placeholder="e.g. A1B2C3D4"
-                required
-              />
-              <button type="submit" className="btn btn-primary" disabled={loading}>
-                <UserPlus size={16} /> {loading ? 'Joining...' : 'Join'}
-              </button>
-            </div>
-          </form>
-        </div>
+        {/* Action buttons when user already has at least one household */}
+        {user && user.households.length > 0 && !showCreateForm && !showJoinForm && (
+          <div className="household-actions">
+            <button className="btn btn-primary" onClick={() => { setShowCreateForm(true); setError(''); setMessage(''); }}>
+              <Plus size={16} /> Create Another Household
+            </button>
+            <button className="btn btn-ghost" onClick={() => { setShowJoinForm(true); setError(''); setMessage(''); }}>
+              <UserPlus size={16} /> Join Household
+            </button>
+          </div>
+        )}
 
         {message && <div className="success-msg">{message}</div>}
         {error && <div className="error-msg">{error}</div>}

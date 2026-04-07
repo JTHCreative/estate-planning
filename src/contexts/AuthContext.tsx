@@ -16,11 +16,14 @@ import {
   joinHousehold as joinHouseholdFn, leaveHousehold as leaveHouseholdFn,
   removeMemberFromHousehold as removeMemberFn,
   updateUserProfile, setPin, clearPin,
+  createHousehold as createHouseholdFn, getHousehold, updateHouseholdName,
 } from '../lib/storage';
 import type { UserProfile, HouseholdMember } from '../lib/storage';
 
 export interface HouseholdInfo {
   id: string;
+  name: string;
+  inviteCode: string;
   members: HouseholdMember[];
 }
 
@@ -45,6 +48,8 @@ interface AuthContextType {
   logout: () => void;
   refreshUser: () => Promise<void>;
   joinHousehold: (inviteCode: string) => Promise<void>;
+  createHousehold: (name: string) => Promise<void>;
+  renameHousehold: (householdId: string, name: string) => Promise<void>;
   leaveHousehold: (householdId?: string) => Promise<void>;
   removeMember: (memberId: string, householdId: string) => Promise<void>;
   updatePhoto: (photoURL: string | null) => Promise<void>;
@@ -71,8 +76,16 @@ async function profileToUser(profile: UserProfile): Promise<User> {
 
   for (const hid of profile.householdIds) {
     try {
-      const members = await getHouseholdMembers(hid);
-      households.push({ id: hid, members });
+      const [members, hh] = await Promise.all([
+        getHouseholdMembers(hid),
+        getHousehold(hid),
+      ]);
+      households.push({
+        id: hid,
+        name: hh?.name || 'My Household',
+        inviteCode: hh?.inviteCode || profile.inviteCode,
+        members,
+      });
       for (const m of members) {
         if (!seen.has(m.id)) {
           seen.add(m.id);
@@ -217,6 +230,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await refreshUser();
   };
 
+  const createHousehold = async (name: string) => {
+    if (!user) return;
+    await createHouseholdFn(user.id, name);
+    await refreshUser();
+  };
+
+  const renameHousehold = async (householdId: string, name: string) => {
+    if (!user) return;
+    await updateHouseholdName(householdId, name);
+    await refreshUser();
+  };
+
   const leaveHousehold = async (householdId?: string) => {
     if (!user) return;
     await leaveHouseholdFn(user.id, householdId);
@@ -273,7 +298,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, refreshUser, joinHousehold, leaveHousehold, removeMember, updatePhoto, updateName, updateUserEmail, updateUserPassword, setUserPin, clearUserPin, loading }}>
+    <AuthContext.Provider value={{ user, login, register, logout, refreshUser, joinHousehold, createHousehold, renameHousehold, leaveHousehold, removeMember, updatePhoto, updateName, updateUserEmail, updateUserPassword, setUserPin, clearUserPin, loading }}>
       {children}
     </AuthContext.Provider>
   );
