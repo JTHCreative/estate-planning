@@ -146,22 +146,22 @@ export default function Settings() {
     }
   };
 
-  const handleLeave = async () => {
+  const handleLeave = async (householdId: string) => {
     if (!confirm('Leave this household? You will no longer see other members\' data and they won\'t see yours.')) return;
     setError('');
     setMessage('');
     try {
-      await leaveHousehold();
-      setMessage('Left household. You now have your own private household.');
+      await leaveHousehold(householdId);
+      setMessage('Left household.');
     } catch (err: any) {
       setError(err.message);
     }
   };
 
-  const handleRemove = async (memberId: string, memberName: string) => {
-    if (!confirm(`Remove ${memberName} from the household? They will no longer see shared data.`)) return;
+  const handleRemove = async (memberId: string, memberName: string, householdId: string) => {
+    if (!confirm(`Remove ${memberName} from this household? They will no longer see shared data.`)) return;
     try {
-      await removeMember(memberId);
+      await removeMember(memberId, householdId);
       await refreshUser();
       setMessage(`${memberName} has been removed.`);
     } catch (err: any) {
@@ -205,7 +205,6 @@ export default function Settings() {
   };
 
   const initials = user ? `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`.toUpperCase() : '';
-  const otherMembers = user?.householdMembers.filter(m => m.id !== user.id) || [];
 
   return (
     <div className="settings-page">
@@ -394,64 +393,83 @@ export default function Settings() {
       <div className="settings-right">
 
       <div className="settings-section">
-        <h3><Users size={20} /> Household Members</h3>
+        <h3><Users size={20} /> Households</h3>
         <p className="section-desc">
-          Share your estate planning data with family members. Everyone in the household can see each other's institutions and accounts.
+          You can be a member of multiple households (e.g. immediate family + parents). Data from all your households is combined in the dashboard.
         </p>
 
         <div className="partner-code-box">
-          <label>Your Household Invite Code</label>
+          <label>Your Personal Invite Code</label>
           <div className="code-display">
             <code>{user?.inviteCode}</code>
             <button className="btn btn-icon" onClick={copyCode}>
               {copied ? <Check size={16} /> : <Copy size={16} />}
             </button>
           </div>
-          <p className="hint">Share this code with family members so they can join your household.</p>
+          <p className="hint">Share this code with family members so they can join your primary household.</p>
         </div>
 
-        {/* Current members */}
-        <div className="household-members">
-          <div className="member-card you">
-            <div className="member-avatar">
-              {user?.photoURL
-                ? <img src={user.photoURL} alt="" />
-                : <span>{initials}</span>
-              }
-            </div>
-            <div className="member-info">
-              <strong>{user?.firstName} {user?.lastName}</strong>
-              <span>{user?.email}</span>
-            </div>
-            <span className="member-badge">You</span>
-          </div>
-
-          {otherMembers.map(member => {
-            const mInitials = `${member.firstName?.[0] || ''}${member.lastName?.[0] || ''}`.toUpperCase();
-            return (
-              <div key={member.id} className="member-card">
-                <div className="member-avatar">
-                  {member.photoURL
-                    ? <img src={member.photoURL} alt="" />
-                    : <span>{mInitials}</span>
-                  }
-                </div>
-                <div className="member-info">
-                  <strong>{member.firstName} {member.lastName}</strong>
-                  <span>{member.email}</span>
-                </div>
-                <button className="btn btn-sm btn-danger" onClick={() => handleRemove(member.id, `${member.firstName} ${member.lastName}`)}>
-                  <UserMinus size={14} /> Remove
-                </button>
+        {/* List of households */}
+        {user?.households.map((hh, idx) => {
+          const isPrimary = hh.id === user.householdId;
+          const others = hh.members.filter(m => m.id !== user.id);
+          return (
+            <div key={hh.id} className="household-card">
+              <div className="household-card-header">
+                <h4>{isPrimary ? 'My Primary Household' : `Household ${idx + 1}`}</h4>
+                {isPrimary && <span className="member-badge">Primary</span>}
               </div>
-            );
-          })}
-        </div>
+              <div className="household-members">
+                <div className="member-card you">
+                  <div className="member-avatar">
+                    {user?.photoURL
+                      ? <img src={user.photoURL} alt="" />
+                      : <span>{initials}</span>
+                    }
+                  </div>
+                  <div className="member-info">
+                    <strong>{user?.firstName} {user?.lastName}</strong>
+                    <span>{user?.email}</span>
+                  </div>
+                  <span className="member-badge">You</span>
+                </div>
+                {others.map(member => {
+                  const mInitials = `${member.firstName?.[0] || ''}${member.lastName?.[0] || ''}`.toUpperCase();
+                  return (
+                    <div key={member.id} className="member-card">
+                      <div className="member-avatar">
+                        {member.photoURL
+                          ? <img src={member.photoURL} alt="" />
+                          : <span>{mInitials}</span>
+                        }
+                      </div>
+                      <div className="member-info">
+                        <strong>{member.firstName} {member.lastName}</strong>
+                        <span>{member.email}</span>
+                      </div>
+                      {isPrimary && (
+                        <button className="btn btn-sm btn-danger" onClick={() => handleRemove(member.id, `${member.firstName} ${member.lastName}`, hh.id)}>
+                          <UserMinus size={14} /> Remove
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Leave button — hide for primary if it's the only household */}
+              {(!isPrimary || (user?.households.length || 0) > 1) && (
+                <button className="btn btn-ghost btn-danger-text" onClick={() => handleLeave(hh.id)}>
+                  <LogOut size={16} /> Leave this household
+                </button>
+              )}
+            </div>
+          );
+        })}
 
         {/* Join another household */}
         <div className="household-join">
           <h4>Join Another Household</h4>
-          <p className="hint">Enter an invite code from a family member to join their household. This will move you out of your current household.</p>
+          <p className="hint">Enter an invite code from a family member to join their household. You can be in multiple households at once.</p>
           <form onSubmit={handleJoin} className="link-form">
             <div className="input-group">
               <input
@@ -467,13 +485,6 @@ export default function Settings() {
             </div>
           </form>
         </div>
-
-        {/* Leave household (only show if there are other members) */}
-        {otherMembers.length > 0 && (
-          <button className="btn btn-ghost btn-danger-text" onClick={handleLeave}>
-            <LogOut size={16} /> Leave this household
-          </button>
-        )}
 
         {message && <div className="success-msg">{message}</div>}
         {error && <div className="error-msg">{error}</div>}

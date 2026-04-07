@@ -19,16 +19,23 @@ import {
 } from '../lib/storage';
 import type { UserProfile, HouseholdMember } from '../lib/storage';
 
+export interface HouseholdInfo {
+  id: string;
+  members: HouseholdMember[];
+}
+
 export interface User {
   id: string;
   email: string;
   firstName: string;
   lastName: string;
   householdId: string;
+  householdIds: string[];
   inviteCode: string;
   photoURL: string | null;
   hasPin: boolean;
-  householdMembers: HouseholdMember[];
+  householdMembers: HouseholdMember[]; // union of all members across all households
+  households: HouseholdInfo[]; // detailed list of each household with its members
 }
 
 interface AuthContextType {
@@ -38,8 +45,8 @@ interface AuthContextType {
   logout: () => void;
   refreshUser: () => Promise<void>;
   joinHousehold: (inviteCode: string) => Promise<void>;
-  leaveHousehold: () => Promise<void>;
-  removeMember: (memberId: string) => Promise<void>;
+  leaveHousehold: (householdId?: string) => Promise<void>;
+  removeMember: (memberId: string, householdId: string) => Promise<void>;
   updatePhoto: (photoURL: string | null) => Promise<void>;
   updateName: (firstName: string, lastName: string) => Promise<void>;
   updateUserEmail: (newEmail: string, currentPassword: string) => Promise<void>;
@@ -58,22 +65,37 @@ export function useAuth() {
 }
 
 async function profileToUser(profile: UserProfile): Promise<User> {
-  let members: HouseholdMember[] = [];
-  try {
-    members = await getHouseholdMembers(profile.householdId);
-  } catch {
-    // May not be accessible yet
+  const households: HouseholdInfo[] = [];
+  const seen = new Set<string>();
+  const allMembers: HouseholdMember[] = [];
+
+  for (const hid of profile.householdIds) {
+    try {
+      const members = await getHouseholdMembers(hid);
+      households.push({ id: hid, members });
+      for (const m of members) {
+        if (!seen.has(m.id)) {
+          seen.add(m.id);
+          allMembers.push(m);
+        }
+      }
+    } catch {
+      // May not be accessible yet
+    }
   }
+
   return {
     id: profile.uid,
     email: profile.email,
     firstName: profile.firstName,
     lastName: profile.lastName,
     householdId: profile.householdId,
+    householdIds: profile.householdIds,
     inviteCode: profile.inviteCode,
     photoURL: profile.photoURL || null,
     hasPin: !!profile.pinHash,
-    householdMembers: members,
+    householdMembers: allMembers,
+    households,
   };
 }
 
@@ -126,10 +148,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             firstName: fbUser.displayName || 'User',
             lastName: '',
             householdId: '',
+            householdIds: [],
             inviteCode: '',
             photoURL: null,
             hasPin: false,
             householdMembers: [],
+            households: [],
           });
         } else {
           setUser(null);
@@ -164,10 +188,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         firstName: '',
         lastName: '',
         householdId: '',
+        householdIds: [],
         inviteCode: '',
         photoURL: null,
         hasPin: false,
         householdMembers: [],
+        households: [],
       });
     }
     setLoading(false);
@@ -191,15 +217,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await refreshUser();
   };
 
-  const leaveHousehold = async () => {
+  const leaveHousehold = async (householdId?: string) => {
     if (!user) return;
-    await leaveHouseholdFn(user.id);
+    await leaveHouseholdFn(user.id, householdId);
     await refreshUser();
   };
 
-  const removeMember = async (memberId: string) => {
+  const removeMember = async (memberId: string, householdId: string) => {
     if (!user) return;
-    await removeMemberFn(memberId);
+    await removeMemberFn(memberId, householdId);
     await refreshUser();
   };
 

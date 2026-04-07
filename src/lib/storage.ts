@@ -11,7 +11,8 @@ export interface UserProfile {
   email: string;
   firstName: string;
   lastName: string;
-  householdId: string;
+  householdId: string; // primary household (for invite code)
+  householdIds: string[]; // all households the user belongs to
   inviteCode: string;
   photoURL: string | null;
   pinHash: string | null;
@@ -154,7 +155,7 @@ export async function createUserProfile(uid: string, email: string, firstName: s
   const inviteCode = crypto.randomUUID().slice(0, 8).toUpperCase();
   const profile: UserProfile = {
     uid, email: email.toLowerCase(), firstName, lastName,
-    householdId, inviteCode, photoURL: null, pinHash: null,
+    householdId, householdIds: [householdId], inviteCode, photoURL: null, pinHash: null,
   };
   await setDoc(doc(db, 'users', uid), profile);
   return profile;
@@ -183,12 +184,21 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
       }
     }
   }
+  // Migration: ensure householdIds array exists
+  if (!Array.isArray(data.householdIds) || data.householdIds.length === 0) {
+    const householdIds = data.householdId ? [data.householdId] : [];
+    if (householdIds.length > 0) {
+      await updateDoc(doc(db, 'users', uid), { householdIds });
+    }
+    data.householdIds = householdIds;
+  }
   return {
     uid: data.uid,
     email: data.email,
     firstName: data.firstName,
     lastName: data.lastName,
     householdId: data.householdId,
+    householdIds: data.householdIds || [data.householdId],
     inviteCode: data.inviteCode || data.partnerCode,
     photoURL: data.photoURL || null,
     pinHash: data.pinHash || null,
@@ -198,9 +208,10 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
 // --- Household Members ---
 
 export async function getHouseholdMembers(householdId: string): Promise<HouseholdMember[]> {
-  const q = query(collection(db, 'users'), where('householdId', '==', householdId));
+  // Use array-contains to find users in this household
+  const q = query(collection(db, 'users'), where('householdIds', 'array-contains', householdId));
   const snap = await getDocs(q);
-  return snap.docs.map(d => {
+  const members = snap.docs.map(d => {
     const data = d.data();
     return {
       id: data.uid,
@@ -210,6 +221,22 @@ export async function getHouseholdMembers(householdId: string): Promise<Househol
       photoURL: data.photoURL || null,
     };
   });
+  // Fallback for legacy users not yet migrated
+  if (members.length === 0) {
+    const legacyQ = query(collection(db, 'users'), where('householdId', '==', householdId));
+    const legacySnap = await getDocs(legacyQ);
+    return legacySnap.docs.map(d => {
+      const data = d.data();
+      return {
+        id: data.uid,
+        email: data.email,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        photoURL: data.photoURL || null,
+      };
+    });
+  }
+  return members;
 }
 
 export async function joinHousehold(userId: string, inviteCode: string): Promise<void> {
@@ -224,28 +251,67 @@ export async function joinHousehold(userId: string, inviteCode: string): Promise
   const targetHouseholdId = target.householdId;
   if (!targetHouseholdId) throw new Error('Invalid household');
 
-  // Update the joining user's householdId to the target's household
-  await updateDoc(doc(db, 'users', userId), { householdId: targetHouseholdId });
+  // Add the household to the user's householdIds (don't replace)
+  const profile = await getUserProfile(userId);
+  if (!profile) throw new Error('User profile not found');
+  if (profile.householdIds.includes(targetHouseholdId)) {
+    throw new Error('You are already a member of this household');
+  }
+  const newHouseholdIds = [...profile.householdIds, targetHouseholdId];
+  await updateDoc(doc(db, 'users', userId), { householdIds: newHouseholdIds });
 }
 
-export async function leaveHousehold(userId: string): Promise<void> {
-  // Create a new solo household for this user
-  const newHouseholdId = crypto.randomUUID();
-  await updateDoc(doc(db, 'users', userId), { householdId: newHouseholdId });
+export async function leaveHousehold(userId: string, householdIdToLeave?: string): Promise<void> {
+  const profile = await getUserProfile(userId);
+  if (!profile) return;
+
+  // If no specific household given, leave all and create a new solo one
+  if (!householdIdToLeave) {
+    const newHouseholdId = crypto.randomUUID();
+    await updateDoc(doc(db, 'users', userId), {
+      householdId: newHouseholdId,
+      householdIds: [newHouseholdId],
+    });
+    return;
+  }
+
+  // Remove the specific household from the array
+  const remaining = profile.householdIds.filter(id => id !== householdIdToLeave);
+
+  // If they have no households left, create a new solo one
+  if (remaining.length === 0) {
+    const newHouseholdId = crypto.randomUUID();
+    await updateDoc(doc(db, 'users', userId), {
+      householdId: newHouseholdId,
+      householdIds: [newHouseholdId],
+    });
+    return;
+  }
+
+  // If leaving their primary household, set primary to the first remaining
+  const updates: any = { householdIds: remaining };
+  if (profile.householdId === householdIdToLeave) {
+    updates.householdId = remaining[0];
+  }
+  await updateDoc(doc(db, 'users', userId), updates);
 }
 
-export async function removeMemberFromHousehold(memberId: string): Promise<void> {
-  // Same as leaving — give them their own household
-  await leaveHousehold(memberId);
+export async function removeMemberFromHousehold(memberId: string, householdId: string): Promise<void> {
+  // Remove the household from the member's householdIds
+  await leaveHousehold(memberId, householdId);
 }
 
-// --- Helper: visible user IDs ---
+// --- Helper: visible user IDs (union across all the user's households) ---
 
 async function getVisibleUserIds(userId: string): Promise<string[]> {
   const profile = await getUserProfile(userId);
   if (!profile) return [userId];
-  const members = await getHouseholdMembers(profile.householdId);
-  return members.map(m => m.id);
+  const seen = new Set<string>([userId]);
+  for (const hid of profile.householdIds) {
+    const members = await getHouseholdMembers(hid);
+    for (const m of members) seen.add(m.id);
+  }
+  return Array.from(seen);
 }
 
 // --- Institutions ---
