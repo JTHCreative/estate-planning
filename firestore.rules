@@ -18,10 +18,29 @@ service cloud.firestore {
       );
     }
 
-    // Allow querying users collection by partnerCode for linking
+    // Allow querying users collection — needed for household member lookups
+    // (array-contains on householdIds) and for invite/partner-code lookups.
     match /users/{userId} {
-      allow list: if request.auth != null
-        && request.query.limit <= 1;
+      allow list: if request.auth != null;
+    }
+
+    // Households: any authenticated user can create one; members (and the
+    // creator) can read and update. Listing is allowed so users can look up
+    // a household by invite code when joining.
+    match /households/{householdId} {
+      allow get: if request.auth != null && (
+        resource.data.createdBy == request.auth.uid ||
+        householdId in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.householdIds
+      );
+      allow list: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.createdBy == request.auth.uid;
+      allow update: if request.auth != null && (
+        resource.data.createdBy == request.auth.uid ||
+        householdId in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.householdIds
+      );
+      allow delete: if request.auth != null
+        && resource.data.createdBy == request.auth.uid;
     }
 
     // Institutions: owner and their partner can read; only owner can write
