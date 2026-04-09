@@ -57,7 +57,7 @@ const iconMap: Record<string, any> = {
 };
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, setUserPin, refreshUser } = useAuth();
 
   // User filter state
   const [activeUserIds, setActiveUserIds] = useState<Set<string>>(new Set());
@@ -154,7 +154,9 @@ export default function Dashboard() {
   const [pinPromptUserId, setPinPromptUserId] = useState<string | null>(null);
   const [pinPromptFieldKey, setPinPromptFieldKey] = useState<string | null>(null);
   const [pinPromptForSave, setPinPromptForSave] = useState(false);
+  const [pinPromptIsSetup, setPinPromptIsSetup] = useState(false);
   const [pinInput, setPinInput] = useState('');
+  const [pinConfirmInput, setPinConfirmInput] = useState('');
   const [pinPromptError, setPinPromptError] = useState('');
 
   // Cache derived AES keys per user (in a ref so it persists across renders without triggering re-renders)
@@ -360,12 +362,34 @@ export default function Dashboard() {
     e.preventDefault();
     if (!pinPromptUserId) return;
     setPinPromptError('');
-    const ok = await verifyPin(pinPromptUserId, pinInput);
-    if (!ok) {
-      setPinPromptError('Incorrect PIN');
-      setPinInput('');
-      return;
+
+    if (pinPromptIsSetup) {
+      // First-time PIN setup before encrypting sensitive data
+      if (pinInput.length !== 6) {
+        setPinPromptError('PIN must be 6 digits');
+        return;
+      }
+      if (pinInput !== pinConfirmInput) {
+        setPinPromptError('PINs do not match');
+        return;
+      }
+      try {
+        await setUserPin(pinInput);
+      } catch {
+        setPinPromptError('Could not set PIN. Please try again.');
+        return;
+      }
+      // Refresh user so user.hasPin reflects the new state
+      await refreshUser();
+    } else {
+      const ok = await verifyPin(pinPromptUserId, pinInput);
+      if (!ok) {
+        setPinPromptError('Incorrect PIN');
+        setPinInput('');
+        return;
+      }
     }
+
     // Derive and cache the AES key for this user
     const key = await deriveKeyFromPin(pinInput);
     userKeysRef.current.set(pinPromptUserId, key);
@@ -382,7 +406,9 @@ export default function Dashboard() {
     setPinPromptUserId(null);
     setPinPromptFieldKey(null);
     setPinPromptForSave(false);
+    setPinPromptIsSetup(false);
     setPinInput('');
+    setPinConfirmInput('');
 
     // If this was triggered by a save attempt, retry the save
     if (wasForSave) {
@@ -449,13 +475,28 @@ export default function Dashboard() {
   const performAccountSave = async () => {
     if (!user || !selectedInstitutionId) return;
 
-    // Encrypt sensitive fields if user has a PIN set
+    // Always encrypt sensitive fields. If the user has no PIN yet, prompt them
+    // to set one before saving so the data is never written as plaintext.
     let acctNum = acctForm.accountNumber || null;
     let rtnNum = acctForm.routingNumber || null;
     let username = acctForm.username || null;
     let password = acctForm.password || null;
 
-    if (user.hasPin) {
+    const hasSensitiveData = !!(acctNum || rtnNum || username || password);
+
+    if (hasSensitiveData) {
+      if (!user.hasPin) {
+        // No PIN yet — prompt user to set one before we can encrypt and save
+        savePendingAccountRef.current = () => { performAccountSave(); };
+        setPinPromptUserId(user.id);
+        setPinPromptFieldKey(null);
+        setPinPromptForSave(true);
+        setPinPromptIsSetup(true);
+        setPinInput('');
+        setPinConfirmInput('');
+        setPinPromptError('');
+        return;
+      }
       const key = userKeysRef.current.get(user.id);
       if (!key) {
         // Need to prompt for PIN to derive key
@@ -463,6 +504,7 @@ export default function Dashboard() {
         setPinPromptUserId(user.id);
         setPinPromptFieldKey(null);
         setPinPromptForSave(true);
+        setPinPromptIsSetup(false);
         setPinInput('');
         setPinPromptError('');
         return;
@@ -500,8 +542,8 @@ export default function Dashboard() {
     savePendingAccountRef.current = null;
     await loadCategoryData();
     await loadAllData();
-    // Re-decrypt visible fields for our user since data has been refreshed
-    if (user.hasPin) await decryptOwnerFields(user.id);
+    // Re-decrypt visible fields for our user if a key is cached (PIN unlocked)
+    if (userKeysRef.current.has(user.id)) await decryptOwnerFields(user.id);
   };
 
   const handleAddAccount = async (e: React.FormEvent) => {
@@ -1135,18 +1177,31 @@ export default function Dashboard() {
       {/* PIN Prompt Modal */}
       {pinPromptUserId && (() => {
         const owner = allMembers.find(m => m.id === pinPromptUserId);
+        const closePrompt = () => {
+          setPinPromptUserId(null);
+          setPinPromptFieldKey(null);
+          setPinPromptForSave(false);
+          setPinPromptIsSetup(false);
+          setPinInput('');
+          setPinConfirmInput('');
+          setPinPromptError('');
+          savePendingAccountRef.current = null;
+        };
         return (
-          <div className="modal-overlay" onClick={() => { setPinPromptUserId(null); setPinPromptFieldKey(null); }}>
+          <div className="modal-overlay" onClick={closePrompt}>
             <div className="modal pin-modal" onClick={e => e.stopPropagation()}>
               <div className="modal-header">
-                <h3><Icons.Lock size={18} /> Enter PIN</h3>
-                <button className="btn btn-ghost" onClick={() => { setPinPromptUserId(null); setPinPromptFieldKey(null); }}><X size={18} /></button>
+                <h3><Icons.Lock size={18} /> {pinPromptIsSetup ? 'Set a PIN' : 'Enter PIN'}</h3>
+                <button className="btn btn-ghost" onClick={closePrompt}><X size={18} /></button>
               </div>
               <p className="section-desc">
-                Enter {owner?.firstName}'s 6-digit PIN to view sensitive information.
+                {pinPromptIsSetup
+                  ? 'Sensitive information is encrypted with a 6-digit PIN. Set one now to save this account securely.'
+                  : `Enter ${owner?.firstName}'s 6-digit PIN to view sensitive information.`}
               </p>
               <form onSubmit={submitPin}>
                 <div className="form-group">
+                  {pinPromptIsSetup && <label>New 6-digit PIN</label>}
                   <input
                     type="password"
                     inputMode="numeric"
@@ -1160,10 +1215,26 @@ export default function Dashboard() {
                     required
                   />
                 </div>
+                {pinPromptIsSetup && (
+                  <div className="form-group">
+                    <label>Confirm PIN</label>
+                    <input
+                      type="password"
+                      inputMode="numeric"
+                      pattern="[0-9]{6}"
+                      maxLength={6}
+                      value={pinConfirmInput}
+                      onChange={e => setPinConfirmInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      placeholder="••••••"
+                      className="pin-input"
+                      required
+                    />
+                  </div>
+                )}
                 {pinPromptError && <div className="error-msg">{pinPromptError}</div>}
                 <div className="form-actions">
-                  <button type="button" className="btn btn-ghost" onClick={() => { setPinPromptUserId(null); setPinPromptFieldKey(null); }}>Cancel</button>
-                  <button type="submit" className="btn btn-primary">Unlock</button>
+                  <button type="button" className="btn btn-ghost" onClick={closePrompt}>Cancel</button>
+                  <button type="submit" className="btn btn-primary">{pinPromptIsSetup ? 'Set PIN & Save' : 'Unlock'}</button>
                 </div>
               </form>
             </div>
