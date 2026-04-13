@@ -42,6 +42,7 @@ export default function Settings() {
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleteError, setDeleteError] = useState('');
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteSuccess, setDeleteSuccess] = useState(false);
 
   const handleScheduleDeletion = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,9 +54,7 @@ export default function Settings() {
     setDeleteLoading(true);
     try {
       await scheduleAccountDeletion(deletePassword);
-      setShowDeleteModal(false);
-      setDeletePassword('');
-      setDeleteConfirmText('');
+      setDeleteSuccess(true);
     } catch (err: any) {
       if (err?.code === 'auth/wrong-password' || err?.code === 'auth/invalid-credential') {
         setDeleteError('Incorrect password.');
@@ -64,6 +63,14 @@ export default function Settings() {
       }
     }
     setDeleteLoading(false);
+  };
+
+  const closeDeleteModal = () => {
+    setShowDeleteModal(false);
+    setDeletePassword('');
+    setDeleteConfirmText('');
+    setDeleteError('');
+    setDeleteSuccess(false);
   };
 
   const handleCancelDeletion = async () => {
@@ -471,61 +478,79 @@ export default function Settings() {
 
       {/* Delete Account Confirmation Modal */}
       {showDeleteModal && (
-        <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
+        <div className="modal-overlay" onClick={closeDeleteModal}>
           <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 480 }}>
             <div className="modal-header">
               <h3><AlertTriangle size={18} /> Delete Account</h3>
-              <button className="btn btn-ghost" onClick={() => setShowDeleteModal(false)}><X size={18} /></button>
+              <button className="btn btn-ghost" onClick={closeDeleteModal}><X size={18} /></button>
             </div>
             <div className="delete-warning-body">
-              <div className="delete-warning-box">
-                <AlertTriangle size={24} />
-                <div>
-                  <strong>This will permanently delete your account</strong>
-                  <p>After a 7-day waiting period, the following will be permanently removed:</p>
-                  <ul>
-                    <li>Your profile and login credentials</li>
-                    <li>All institutions and accounts you own</li>
-                    <li>All encrypted sensitive data</li>
-                    <li>Your membership in all households</li>
-                  </ul>
-                  <p>You can cancel the deletion at any time during the 7-day period.</p>
-                </div>
-              </div>
-              <form onSubmit={handleScheduleDeletion}>
-                <div className="form-group">
-                  <label>Enter your password</label>
-                  <input
-                    type="password"
-                    value={deletePassword}
-                    onChange={e => setDeletePassword(e.target.value)}
-                    placeholder="Current password"
-                    required
-                    autoFocus
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Type <strong>Confirm Delete</strong> to proceed</label>
-                  <input
-                    type="text"
-                    value={deleteConfirmText}
-                    onChange={e => setDeleteConfirmText(e.target.value)}
-                    placeholder="Confirm Delete"
-                    required
-                  />
-                </div>
-                {deleteError && <div className="error-msg">{deleteError}</div>}
-                <div className="form-actions">
-                  <button type="button" className="btn btn-ghost" onClick={() => setShowDeleteModal(false)}>Cancel</button>
-                  <button
-                    type="submit"
-                    className="btn btn-danger"
-                    disabled={deleteLoading || deleteConfirmText !== 'Confirm Delete' || !deletePassword}
-                  >
-                    {deleteLoading ? 'Processing...' : 'Delete My Account'}
-                  </button>
-                </div>
-              </form>
+              {deleteSuccess ? (
+                <>
+                  <div className="delete-success-box">
+                    <AlertTriangle size={24} />
+                    <div>
+                      <strong>Account scheduled for deletion</strong>
+                      <p>Your account and all associated data will be permanently deleted in <strong>7 days</strong>.</p>
+                      <p>You can cancel the deletion at any time from this Settings page during the waiting period.</p>
+                    </div>
+                  </div>
+                  <div className="form-actions">
+                    <button type="button" className="btn btn-primary" onClick={closeDeleteModal}>OK</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="delete-warning-box">
+                    <AlertTriangle size={24} />
+                    <div>
+                      <strong>This will permanently delete your account</strong>
+                      <p>After a 7-day waiting period, the following will be permanently removed:</p>
+                      <ul>
+                        <li>Your profile and login credentials</li>
+                        <li>All institutions and accounts you own</li>
+                        <li>All encrypted sensitive data</li>
+                        <li>Your membership in all households</li>
+                      </ul>
+                      <p>You can cancel the deletion at any time during the 7-day period.</p>
+                    </div>
+                  </div>
+                  <form onSubmit={handleScheduleDeletion}>
+                    <div className="form-group">
+                      <label>Enter your password</label>
+                      <input
+                        type="password"
+                        value={deletePassword}
+                        onChange={e => setDeletePassword(e.target.value)}
+                        placeholder="Current password"
+                        required
+                        autoFocus
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Type <strong>Confirm Delete</strong> to proceed</label>
+                      <input
+                        type="text"
+                        value={deleteConfirmText}
+                        onChange={e => setDeleteConfirmText(e.target.value)}
+                        placeholder="Confirm Delete"
+                        required
+                      />
+                    </div>
+                    {deleteError && <div className="error-msg">{deleteError}</div>}
+                    <div className="form-actions">
+                      <button type="button" className="btn btn-ghost" onClick={closeDeleteModal}>Cancel</button>
+                      <button
+                        type="submit"
+                        className="btn btn-danger"
+                        disabled={deleteLoading || deleteConfirmText !== 'Confirm Delete' || !deletePassword}
+                      >
+                        {deleteLoading ? 'Processing...' : 'Delete My Account'}
+                      </button>
+                    </div>
+                  </form>
+                </>
+              )}
             </div>
           </div>
         </div>

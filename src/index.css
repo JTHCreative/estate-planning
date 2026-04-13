@@ -1979,6 +1979,31 @@ a:hover { text-decoration: underline; }
 .delete-warning-box li {
   margin-bottom: 3px;
 }
+.delete-success-box {
+  display: flex;
+  gap: 14px;
+  padding: 16px;
+  background: var(--success-alpha-10);
+  border: 1px solid var(--success);
+  border-radius: var(--radius);
+  margin-bottom: 20px;
+  color: var(--text);
+}
+.delete-success-box > svg {
+  color: var(--success);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.delete-success-box strong {
+  display: block;
+  color: var(--success);
+  margin-bottom: 6px;
+}
+.delete-success-box p {
+  font-size: 13px;
+  margin-bottom: 6px;
+  color: var(--text-muted);
+}
 
 /* Dashboard deletion countdown banner */
 .deletion-countdown-banner {
