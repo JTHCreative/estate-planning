@@ -238,6 +238,15 @@ export default function Dashboard() {
     }
   }, [selectedCategoryId, loadCategoryData]);
 
+  // Re-decrypt fields for unlocked users when accounts change (e.g. after adding a new account)
+  useEffect(() => {
+    unlockedUsers.forEach(ownerId => {
+      if (userKeysRef.current.has(ownerId)) {
+        decryptOwnerFields(ownerId);
+      }
+    });
+  }, [allAccounts]);
+
   // Auto-select first institution when category data loads
   useEffect(() => {
     if (selectedCategoryId && categoryInstitutions.length > 0 && !selectedInstitutionId) {
