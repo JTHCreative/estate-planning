@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import {
   CATEGORIES, getInstitutions, getAccounts,
@@ -163,7 +163,6 @@ export default function Dashboard() {
   const [unlockedUsers, setUnlockedUsers] = useState<Set<string>>(new Set());
   const [pinPromptUserId, setPinPromptUserId] = useState<string | null>(null);
   const [pinPromptFieldKey, setPinPromptFieldKey] = useState<string | null>(null);
-  const [pinPromptForSave, setPinPromptForSave] = useState(false);
   const [pinPromptIsSetup, setPinPromptIsSetup] = useState(false);
   const [pinInput, setPinInput] = useState('');
   const [pinConfirmInput, setPinConfirmInput] = useState('');
@@ -195,37 +194,61 @@ export default function Dashboard() {
   const filteredInsts = allInstitutions.filter(i => activeUserIds.has(i.userId));
   const filteredAccts = allAccounts.filter(a => activeUserIds.has(a.userId));
 
-  const getCategoryCounts = (catId: string) => {
-    const instCount = filteredInsts.filter(i => i.categoryId === catId).length;
-    const catInstIds = new Set(filteredInsts.filter(i => i.categoryId === catId).map(i => i.id));
-    const acctCount = filteredAccts.filter(a => catInstIds.has(a.institutionId)).length;
-    return { instCount, acctCount };
-  };
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, { instCount: number; acctCount: number }> = {};
+    // Build a map of categoryId → institution IDs in one pass
+    const catInstIds: Record<string, Set<string>> = {};
+    for (const inst of filteredInsts) {
+      if (!counts[inst.categoryId]) counts[inst.categoryId] = { instCount: 0, acctCount: 0 };
+      counts[inst.categoryId].instCount++;
+      if (!catInstIds[inst.categoryId]) catInstIds[inst.categoryId] = new Set();
+      catInstIds[inst.categoryId].add(inst.id);
+    }
+    // Count accounts per category in one pass
+    for (const acct of filteredAccts) {
+      for (const catId in catInstIds) {
+        if (catInstIds[catId].has(acct.institutionId)) {
+          if (!counts[catId]) counts[catId] = { instCount: 0, acctCount: 0 };
+          counts[catId].acctCount++;
+          break;
+        }
+      }
+    }
+    return counts;
+  }, [filteredInsts, filteredAccts]);
+
+  const getCategoryCounts = (catId: string) => categoryCounts[catId] || { instCount: 0, acctCount: 0 };
 
   // Load all household data for counts
   const loadAllData = useCallback(async () => {
     if (!user) return;
-    const [insts, accts] = await Promise.all([
-      getInstitutions(user.id),
-      getAccounts(user.id),
-    ]);
-    setAllInstitutions(insts);
-    setAllAccounts(accts);
+    try {
+      const [insts, accts] = await Promise.all([
+        getInstitutions(user.id),
+        getAccounts(user.id),
+      ]);
+      setAllInstitutions(insts);
+      setAllAccounts(accts);
+    } catch (err) {
+      console.error('Failed to load data:', err);
+    }
   }, [user]);
 
   // Load institutions and accounts for the selected category
   const loadCategoryData = useCallback(async () => {
     if (!user || !selectedCategoryId) return;
-    const [insts, accts, allInsts, allAccts] = await Promise.all([
-      getInstitutions(user.id, selectedCategoryId),
-      getAccounts(user.id),
-      getInstitutions(user.id),
-      getAccounts(user.id),
-    ]);
-    setInstitutions(insts);
-    setAccounts(accts);
-    setAllInstitutions(allInsts);
-    setAllAccounts(allAccts);
+    try {
+      const [allInsts, allAccts] = await Promise.all([
+        getInstitutions(user.id),
+        getAccounts(user.id),
+      ]);
+      setInstitutions(allInsts.filter(i => i.categoryId === selectedCategoryId));
+      setAccounts(allAccts);
+      setAllInstitutions(allInsts);
+      setAllAccounts(allAccts);
+    } catch (err) {
+      console.error('Failed to load category data:', err);
+    }
   }, [user, selectedCategoryId]);
 
   useEffect(() => {
@@ -245,7 +268,7 @@ export default function Dashboard() {
         decryptOwnerFields(ownerId);
       }
     });
-  }, [allAccounts]);
+  }, [allAccounts, unlockedUsers]);
 
   // Auto-select first institution when category data loads
   useEffect(() => {
@@ -312,8 +335,6 @@ export default function Dashboard() {
     setRevealedFields(new Set());
     setSearchQuery('');
     setShowSearchResults(false);
-    // If we navigated to a specific account, mark it for highlight (optional future use)
-    void acctId;
   };
 
   // Decrypt all encrypted fields visible for the given owner using their cached key
@@ -428,17 +449,18 @@ export default function Dashboard() {
       setRevealedFields(prev => new Set(prev).add(pinPromptFieldKey));
     }
 
-    const wasForSave = pinPromptForSave;
+    const pendingAction = savePendingAccountRef.current;
     setPinPromptUserId(null);
     setPinPromptFieldKey(null);
-    setPinPromptForSave(false);
     setPinPromptIsSetup(false);
     setPinInput('');
     setPinConfirmInput('');
 
-    // If this was triggered by a save attempt, retry the save
-    if (wasForSave) {
-      setTimeout(() => savePendingAccountRef.current?.(), 0);
+    // If a pending action was queued (e.g. startEditAcct needing PIN to decrypt),
+    // execute it now that the key is cached
+    if (pendingAction) {
+      savePendingAccountRef.current = null;
+      setTimeout(() => pendingAction(), 0);
     }
   };
 
@@ -599,7 +621,7 @@ export default function Dashboard() {
         // Need PIN to decrypt before editing
         setPinPromptUserId(acct.userId);
         setPinPromptFieldKey(null);
-        setPinPromptForSave(false);
+
         savePendingAccountRef.current = () => { startEditAcct(acct); };
         setPinInput('');
         setPinPromptError('');
@@ -1324,7 +1346,7 @@ export default function Dashboard() {
         const closePrompt = () => {
           setPinPromptUserId(null);
           setPinPromptFieldKey(null);
-          setPinPromptForSave(false);
+  
           setPinPromptIsSetup(false);
           setPinInput('');
           setPinConfirmInput('');
