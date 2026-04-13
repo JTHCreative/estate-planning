@@ -17,6 +17,7 @@ import {
   removeMemberFromHousehold as removeMemberFn,
   updateUserProfile, setPin, clearPin,
   createHousehold as createHouseholdFn, getHousehold, updateHouseholdName,
+  scheduleDeletion, cancelDeletion as cancelDeletionFn, permanentlyDeleteUser, getDeletionDaysLeft,
 } from '../lib/storage';
 import type { UserProfile, HouseholdMember } from '../lib/storage';
 
@@ -37,6 +38,8 @@ export interface User {
   inviteCode: string;
   photoURL: string | null;
   hasPin: boolean;
+  deletionScheduledAt: string | null;
+  deletionDaysLeft: number | null;
   householdMembers: HouseholdMember[]; // union of all members across all households
   households: HouseholdInfo[]; // detailed list of each household with its members
 }
@@ -58,6 +61,8 @@ interface AuthContextType {
   updateUserPassword: (currentPassword: string, newPassword: string) => Promise<void>;
   setUserPin: (pin: string) => Promise<void>;
   clearUserPin: () => Promise<void>;
+  scheduleAccountDeletion: (currentPassword: string) => Promise<void>;
+  cancelAccountDeletion: () => Promise<void>;
   loading: boolean;
 }
 
@@ -107,6 +112,8 @@ async function profileToUser(profile: UserProfile): Promise<User> {
     inviteCode: profile.inviteCode,
     photoURL: profile.photoURL || null,
     hasPin: !!profile.pinHash,
+    deletionScheduledAt: profile.deletionScheduledAt || null,
+    deletionDaysLeft: getDeletionDaysLeft(profile.deletionScheduledAt),
     householdMembers: allMembers,
     households,
   };
@@ -165,6 +172,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             inviteCode: '',
             photoURL: null,
             hasPin: false,
+            deletionScheduledAt: null,
+            deletionDaysLeft: null,
             householdMembers: [],
             households: [],
           });
@@ -297,8 +306,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(prev => prev ? { ...prev, hasPin: false } : prev);
   };
 
+  const scheduleAccountDeletion = async (currentPassword: string) => {
+    if (!user || !auth.currentUser) return;
+    // Re-authenticate to confirm identity
+    const cred = EmailAuthProvider.credential(user.email, currentPassword);
+    await reauthenticateWithCredential(auth.currentUser, cred);
+    // Check if deletion period has already elapsed (immediate delete)
+    const profile = await getUserProfile(user.id);
+    if (profile?.deletionScheduledAt) {
+      const daysLeft = getDeletionDaysLeft(profile.deletionScheduledAt);
+      if (daysLeft !== null && daysLeft <= 0) {
+        await permanentlyDeleteUser(user.id);
+        await auth.currentUser.delete();
+        setUser(null);
+        return;
+      }
+    }
+    await scheduleDeletion(user.id);
+    await refreshUser();
+  };
+
+  const cancelAccountDeletion = async () => {
+    if (!user) return;
+    await cancelDeletionFn(user.id);
+    await refreshUser();
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, refreshUser, joinHousehold, createHousehold, renameHousehold, leaveHousehold, removeMember, updatePhoto, updateName, updateUserEmail, updateUserPassword, setUserPin, clearUserPin, loading }}>
+    <AuthContext.Provider value={{ user, login, register, logout, refreshUser, joinHousehold, createHousehold, renameHousehold, leaveHousehold, removeMember, updatePhoto, updateName, updateUserEmail, updateUserPassword, setUserPin, clearUserPin, scheduleAccountDeletion, cancelAccountDeletion, loading }}>
       {children}
     </AuthContext.Provider>
   );

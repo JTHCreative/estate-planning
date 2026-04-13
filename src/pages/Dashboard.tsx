@@ -628,6 +628,14 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard">
+      {/* Deletion countdown banner */}
+      {user?.deletionScheduledAt && user.deletionDaysLeft !== null && (
+        <div className="deletion-countdown-banner">
+          <Icons.AlertTriangle size={16} />
+          <span>This account is scheduled for deletion in <strong>{user.deletionDaysLeft} day{user.deletionDaysLeft !== 1 ? 's' : ''}</strong></span>
+          <a href="/settings">Manage in Settings</a>
+        </div>
+      )}
       {/* Dashboard Header */}
       <div className="dash-header">
         <h2>Dashboard</h2>

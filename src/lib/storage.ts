@@ -16,6 +16,7 @@ export interface UserProfile {
   inviteCode: string; // legacy personal invite code
   photoURL: string | null;
   pinHash: string | null;
+  deletionScheduledAt?: string | null; // ISO timestamp when deletion was requested
 }
 
 export interface Household {
@@ -468,18 +469,22 @@ export async function getAccounts(userId: string, institutionId?: string): Promi
 }
 
 export async function addAccount(userId: string, data: Omit<Account, 'id' | 'userId' | 'createdAt'>): Promise<Account> {
-  // If adding to someone else's institution, become a co-owner
-  const instSnap = await getDoc(doc(db, 'institutions', data.institutionId));
-  if (instSnap.exists()) {
-    const inst = instSnap.data() as Institution;
-    if (inst.userId !== userId) {
-      const existing = inst.coOwnerIds || [];
-      if (!existing.includes(userId)) {
-        await updateDoc(doc(db, 'institutions', data.institutionId), {
-          coOwnerIds: [...existing, userId],
-        });
+  // If adding to someone else's institution, try to become a co-owner (non-blocking)
+  try {
+    const instSnap = await getDoc(doc(db, 'institutions', data.institutionId));
+    if (instSnap.exists()) {
+      const inst = instSnap.data() as Institution;
+      if (inst.userId !== userId) {
+        const existing = inst.coOwnerIds || [];
+        if (!existing.includes(userId)) {
+          await updateDoc(doc(db, 'institutions', data.institutionId), {
+            coOwnerIds: [...existing, userId],
+          });
+        }
       }
     }
+  } catch {
+    // Co-owner update may fail if rules don't allow it — continue with account creation
   }
 
   const ref = doc(collection(db, 'accounts'));
@@ -513,6 +518,66 @@ export async function getStats(userId: string) {
     totalAccounts: accounts.length,
     categoryCounts,
   };
+}
+
+// --- Account Deletion ---
+
+export async function scheduleDeletion(uid: string): Promise<void> {
+  await updateDoc(doc(db, 'users', uid), { deletionScheduledAt: new Date().toISOString() });
+}
+
+export async function cancelDeletion(uid: string): Promise<void> {
+  await updateDoc(doc(db, 'users', uid), { deletionScheduledAt: null });
+}
+
+export function getDeletionDaysLeft(deletionScheduledAt: string | null | undefined): number | null {
+  if (!deletionScheduledAt) return null;
+  const scheduled = new Date(deletionScheduledAt).getTime();
+  const deleteAt = scheduled + 7 * 24 * 60 * 60 * 1000; // 7 days
+  const now = Date.now();
+  if (now >= deleteAt) return 0;
+  return Math.ceil((deleteAt - now) / (24 * 60 * 60 * 1000));
+}
+
+export async function permanentlyDeleteUser(uid: string): Promise<void> {
+  // Delete all accounts owned by this user
+  const acctQ = query(collection(db, 'accounts'), where('userId', '==', uid));
+  const acctSnap = await getDocs(acctQ);
+  const batch1 = writeBatch(db);
+  acctSnap.forEach(d => batch1.delete(d.ref));
+  if (!acctSnap.empty) await batch1.commit();
+
+  // Delete all institutions owned by this user
+  const instQ = query(collection(db, 'institutions'), where('userId', '==', uid));
+  const instSnap = await getDocs(instQ);
+  const batch2 = writeBatch(db);
+  instSnap.forEach(d => batch2.delete(d.ref));
+  if (!instSnap.empty) await batch2.commit();
+
+  // Remove user from co-owner lists on other institutions
+  const allInstQ = query(collection(db, 'institutions'));
+  const allInstSnap = await getDocs(allInstQ);
+  const batch3 = writeBatch(db);
+  let coOwnerUpdates = 0;
+  allInstSnap.forEach(d => {
+    const data = d.data();
+    if (data.coOwnerIds && data.coOwnerIds.includes(uid)) {
+      batch3.update(d.ref, { coOwnerIds: data.coOwnerIds.filter((id: string) => id !== uid) });
+      coOwnerUpdates++;
+    }
+  });
+  if (coOwnerUpdates > 0) await batch3.commit();
+
+  // Remove user from all households
+  const profile = await getUserProfile(uid);
+  if (profile) {
+    for (const hid of profile.householdIds) {
+      await leaveHousehold(uid, hid);
+    }
+  }
+
+  // Delete user profile document
+  await deleteDoc(doc(db, 'users', uid));
 }
 
 // --- Categories (static) ---
