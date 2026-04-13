@@ -853,6 +853,10 @@ a:hover { text-decoration: underline; }
   object-fit: cover;
 }
 
+.inst-user-avatar.owner {
+  box-shadow: 0 0 0 2px var(--primary);
+}
+
 .inst-user-avatar[title]:hover::after {
   content: attr(title);
   position: absolute;
