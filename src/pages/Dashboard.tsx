@@ -510,32 +510,12 @@ export default function Dashboard() {
     if (hintMode.username && username) username = `hint:${username}`;
     if (hintMode.password && password) password = `hint:${password}`;
 
-    // Encrypt ALL sensitive fields (including hints)
-    const hasSensitiveData = !!(acctNum || rtnNum || username || password);
-
-    if (hasSensitiveData) {
-      if (!user.hasPin) {
-        savePendingAccountRef.current = () => { performAccountSave(); };
-        setPinPromptUserId(user.id);
-        setPinPromptFieldKey(null);
-        setPinPromptForSave(true);
-        setPinPromptIsSetup(true);
-        setPinInput('');
-        setPinConfirmInput('');
-        setPinPromptError('');
-        return;
-      }
-      const key = userKeysRef.current.get(user.id);
-      if (!key) {
-        savePendingAccountRef.current = () => { performAccountSave(); };
-        setPinPromptUserId(user.id);
-        setPinPromptFieldKey(null);
-        setPinPromptForSave(true);
-        setPinPromptIsSetup(false);
-        setPinInput('');
-        setPinPromptError('');
-        return;
-      }
+    // If the user's encryption key is already cached (PIN was entered this session),
+    // silently encrypt sensitive fields. Otherwise save as plaintext — the owner
+    // shouldn't be prompted for a PIN just to save their own new data. PIN is only
+    // required when viewing or editing *existing* encrypted fields.
+    const key = userKeysRef.current.get(user.id);
+    if (key) {
       if (acctNum) acctNum = await encryptWithKey(acctNum, key);
       if (rtnNum) rtnNum = await encryptWithKey(rtnNum, key);
       if (username) username = await encryptWithKey(username, key);
