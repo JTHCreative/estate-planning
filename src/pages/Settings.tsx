@@ -1,10 +1,10 @@
 import { useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { Copy, Check, Camera, X, Sun, Moon, UserPlus, UserMinus, Users, LogOut, Lock, KeyRound, User as UserIcon, Save, Edit3, Home, Plus } from 'lucide-react';
+import { Copy, Check, Camera, X, Sun, Moon, UserPlus, UserMinus, Users, LogOut, Lock, KeyRound, User as UserIcon, Save, Edit3, Home, Plus, Trash2, AlertTriangle } from 'lucide-react';
 
 export default function Settings() {
-  const { user, joinHousehold, createHousehold, renameHousehold, leaveHousehold, removeMember, updatePhoto, refreshUser, setUserPin, clearUserPin, updateName, updateUserEmail, updateUserPassword } = useAuth();
+  const { user, joinHousehold, createHousehold, renameHousehold, leaveHousehold, removeMember, updatePhoto, refreshUser, setUserPin, clearUserPin, updateName, updateUserEmail, updateUserPassword, scheduleAccountDeletion, cancelAccountDeletion } = useAuth();
   const { theme, setTheme } = useTheme();
   const [inviteCode, setInviteCode] = useState('');
   const [message, setMessage] = useState('');
@@ -35,6 +35,44 @@ export default function Settings() {
   const [confirmPasswordInput, setConfirmPasswordInput] = useState('');
   const [profileMessage, setProfileMessage] = useState('');
   const [profileError, setProfileError] = useState('');
+
+  // Delete account state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const handleScheduleDeletion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setDeleteError('');
+    if (deleteConfirmText !== 'Confirm Delete') {
+      setDeleteError('Please type "Confirm Delete" exactly.');
+      return;
+    }
+    setDeleteLoading(true);
+    try {
+      await scheduleAccountDeletion(deletePassword);
+      setShowDeleteModal(false);
+      setDeletePassword('');
+      setDeleteConfirmText('');
+    } catch (err: any) {
+      if (err?.code === 'auth/wrong-password' || err?.code === 'auth/invalid-credential') {
+        setDeleteError('Incorrect password.');
+      } else {
+        setDeleteError(err?.message || 'Failed to schedule deletion.');
+      }
+    }
+    setDeleteLoading(false);
+  };
+
+  const handleCancelDeletion = async () => {
+    try {
+      await cancelAccountDeletion();
+    } catch {
+      // ignore
+    }
+  };
 
   const startEditName = () => {
     setFirstNameInput(user?.firstName || '');
@@ -405,6 +443,93 @@ export default function Settings() {
           {pinError && <div className="error-msg">{pinError}</div>}
         </div>
       </div>
+
+      <div className="settings-subsection delete-account-section">
+        <h4><Trash2 size={14} /> Delete Account</h4>
+        {user?.deletionScheduledAt ? (
+          <div className="deletion-scheduled-banner">
+            <AlertTriangle size={18} />
+            <div>
+              <strong>Account scheduled for deletion</strong>
+              <span>Your account and all data will be permanently deleted in {user.deletionDaysLeft} day{user.deletionDaysLeft !== 1 ? 's' : ''}.</span>
+            </div>
+            <button className="btn btn-sm btn-primary" onClick={handleCancelDeletion}>
+              Cancel Deletion
+            </button>
+          </div>
+        ) : (
+          <>
+            <p className="section-desc">
+              Permanently delete your account and all associated data. This action is irreversible after the waiting period.
+            </p>
+            <button className="btn btn-danger" onClick={() => { setShowDeleteModal(true); setDeleteError(''); setDeletePassword(''); setDeleteConfirmText(''); }}>
+              <Trash2 size={16} /> Delete Account
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* Delete Account Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 480 }}>
+            <div className="modal-header">
+              <h3><AlertTriangle size={18} /> Delete Account</h3>
+              <button className="btn btn-ghost" onClick={() => setShowDeleteModal(false)}><X size={18} /></button>
+            </div>
+            <div className="delete-warning-body">
+              <div className="delete-warning-box">
+                <AlertTriangle size={24} />
+                <div>
+                  <strong>This will permanently delete your account</strong>
+                  <p>After a 7-day waiting period, the following will be permanently removed:</p>
+                  <ul>
+                    <li>Your profile and login credentials</li>
+                    <li>All institutions and accounts you own</li>
+                    <li>All encrypted sensitive data</li>
+                    <li>Your membership in all households</li>
+                  </ul>
+                  <p>You can cancel the deletion at any time during the 7-day period.</p>
+                </div>
+              </div>
+              <form onSubmit={handleScheduleDeletion}>
+                <div className="form-group">
+                  <label>Enter your password</label>
+                  <input
+                    type="password"
+                    value={deletePassword}
+                    onChange={e => setDeletePassword(e.target.value)}
+                    placeholder="Current password"
+                    required
+                    autoFocus
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Type <strong>Confirm Delete</strong> to proceed</label>
+                  <input
+                    type="text"
+                    value={deleteConfirmText}
+                    onChange={e => setDeleteConfirmText(e.target.value)}
+                    placeholder="Confirm Delete"
+                    required
+                  />
+                </div>
+                {deleteError && <div className="error-msg">{deleteError}</div>}
+                <div className="form-actions">
+                  <button type="button" className="btn btn-ghost" onClick={() => setShowDeleteModal(false)}>Cancel</button>
+                  <button
+                    type="submit"
+                    className="btn btn-danger"
+                    disabled={deleteLoading || deleteConfirmText !== 'Confirm Delete' || !deletePassword}
+                  >
+                    {deleteLoading ? 'Processing...' : 'Delete My Account'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="settings-section">
         <h3>Appearance</h3>
