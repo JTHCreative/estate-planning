@@ -156,6 +156,14 @@ export function isEncrypted(value: string | null | undefined): boolean {
   return typeof value === 'string' && value.startsWith('enc:');
 }
 
+export function isHint(value: string | null | undefined): boolean {
+  return typeof value === 'string' && value.startsWith('hint:');
+}
+
+export function getHintText(value: string): string {
+  return value.startsWith('hint:') ? value.slice(5) : value;
+}
+
 // --- User Profiles ---
 
 export async function createUserProfile(uid: string, email: string, firstName: string, lastName: string): Promise<UserProfile> {

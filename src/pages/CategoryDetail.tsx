@@ -4,10 +4,10 @@ import { useAuth } from '../contexts/AuthContext';
 import {
   CATEGORIES, getInstitutions, getAccounts,
   addInstitution, updateInstitution, deleteInstitution,
-  addAccount, updateAccount, deleteAccount,
+  addAccount, updateAccount, deleteAccount, isHint, getHintText,
 } from '../lib/storage';
 import type { Institution, Account } from '../lib/storage';
-import { Plus, ArrowLeft, Trash2, Edit3, ChevronDown, ChevronRight, Eye, EyeOff, X,
+import { Plus, ArrowLeft, Trash2, Edit3, ChevronDown, ChevronRight, Eye, EyeOff, X, AlertCircle,
   Landmark, Building2, Banknote, CreditCard, Wallet, PiggyBank, CircleDollarSign,
   Shield, Heart, Car, Truck, Bike, Ship, Caravan, Sailboat, Waves,
   Home, Building, TreePine, MapPin, Hotel, Castle,
@@ -450,6 +450,8 @@ const fieldToFormKey: Record<string, string> = {
   contactEmail: 'contactEmail',
 };
 
+const SENSITIVE_FIELD_KEYS = new Set(['accountNumber', 'routingNumber', 'username', 'password']);
+
 export default function CategoryDetail() {
   const { categoryId } = useParams();
   const { user } = useAuth();
@@ -476,6 +478,8 @@ export default function CategoryDetail() {
     username: '', password: '', url: '', contactName: '', contactPhone: '',
     contactEmail: '', estimatedValue: '', beneficiary: '', notes: ''
   });
+  const [hintMode, setHintMode] = useState<Record<string, boolean>>({});
+  const [openComboMenu, setOpenComboMenu] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!user || !categoryId) return;
@@ -512,11 +516,15 @@ export default function CategoryDetail() {
   };
 
   const resetInstForm = () => setInstForm({ name: '', website: '', phone: '', notes: '' });
-  const resetAcctForm = () => setAcctForm({
-    accountName: '', accountType: '', accountNumber: '', routingNumber: '',
-    username: '', password: '', url: '', contactName: '', contactPhone: '',
-    contactEmail: '', estimatedValue: '', beneficiary: '', notes: ''
-  });
+  const resetAcctForm = () => {
+    setAcctForm({
+      accountName: '', accountType: '', accountNumber: '', routingNumber: '',
+      username: '', password: '', url: '', contactName: '', contactPhone: '',
+      contactEmail: '', estimatedValue: '', beneficiary: '', notes: ''
+    });
+    setHintMode({});
+    setOpenComboMenu(null);
+  };
 
   const handleAddInstitution = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -541,11 +549,18 @@ export default function CategoryDetail() {
   const handleAddAccount = async (e: React.FormEvent, institutionId: string) => {
     e.preventDefault();
     if (!user) return;
+
+    // Apply hint prefix for fields in hint mode
+    const acctNum = hintMode.accountNumber && acctForm.accountNumber ? `hint:${acctForm.accountNumber}` : (acctForm.accountNumber || null);
+    const rtnNum = hintMode.routingNumber && acctForm.routingNumber ? `hint:${acctForm.routingNumber}` : (acctForm.routingNumber || null);
+    const uname = hintMode.username && acctForm.username ? `hint:${acctForm.username}` : (acctForm.username || null);
+    const pwd = hintMode.password && acctForm.password ? `hint:${acctForm.password}` : (acctForm.password || null);
+
     if (editingAcct) {
       await updateAccount(editingAcct.id, {
         accountName: acctForm.accountName, accountType: acctForm.accountType || null,
-        accountNumber: acctForm.accountNumber || null, routingNumber: acctForm.routingNumber || null,
-        username: acctForm.username || null, passwordEncrypted: acctForm.password || null,
+        accountNumber: acctNum, routingNumber: rtnNum,
+        username: uname, passwordEncrypted: pwd,
         url: acctForm.url || null, contactName: acctForm.contactName || null,
         contactPhone: acctForm.contactPhone || null, contactEmail: acctForm.contactEmail || null,
         estimatedValue: acctForm.estimatedValue || null, beneficiary: acctForm.beneficiary || null,
@@ -555,9 +570,9 @@ export default function CategoryDetail() {
     } else {
       await addAccount(user.id, {
         institutionId, accountName: acctForm.accountName,
-        accountType: acctForm.accountType || null, accountNumber: acctForm.accountNumber || null,
-        routingNumber: acctForm.routingNumber || null, username: acctForm.username || null,
-        passwordEncrypted: acctForm.password || null, url: acctForm.url || null,
+        accountType: acctForm.accountType || null, accountNumber: acctNum,
+        routingNumber: rtnNum, username: uname,
+        passwordEncrypted: pwd, url: acctForm.url || null,
         contactName: acctForm.contactName || null, contactPhone: acctForm.contactPhone || null,
         contactEmail: acctForm.contactEmail || null, estimatedValue: acctForm.estimatedValue || null,
         beneficiary: acctForm.beneficiary || null, notes: acctForm.notes || null,
@@ -587,15 +602,27 @@ export default function CategoryDetail() {
   };
 
   const startEditAcct = (acct: Account) => {
+    const editHintMode: Record<string, boolean> = {};
+    let acctNum = acct.accountNumber || '';
+    let rtnNum = acct.routingNumber || '';
+    let username = acct.username || '';
+    let password = acct.passwordEncrypted || '';
+
+    if (isHint(acctNum)) { editHintMode.accountNumber = true; acctNum = getHintText(acctNum); }
+    if (isHint(rtnNum)) { editHintMode.routingNumber = true; rtnNum = getHintText(rtnNum); }
+    if (isHint(username)) { editHintMode.username = true; username = getHintText(username); }
+    if (isHint(password)) { editHintMode.password = true; password = getHintText(password); }
+
     setAcctForm({
       accountName: acct.accountName, accountType: acct.accountType || '',
-      accountNumber: acct.accountNumber || '', routingNumber: acct.routingNumber || '',
-      username: acct.username || '', password: acct.passwordEncrypted || '',
+      accountNumber: acctNum, routingNumber: rtnNum,
+      username: username, password: password,
       url: acct.url || '', contactName: acct.contactName || '',
       contactPhone: acct.contactPhone || '', contactEmail: acct.contactEmail || '',
       estimatedValue: acct.estimatedValue || '', beneficiary: acct.beneficiary || '',
       notes: acct.notes || ''
     });
+    setHintMode(editHintMode);
     setEditingAcct(acct);
     setShowAcctForm(acct.institutionId);
   };
@@ -748,15 +775,71 @@ export default function CategoryDetail() {
                                     </div>
                                     {config.fields.map(field => {
                                       const formKey = fieldToFormKey[field.key] as keyof typeof acctForm;
+                                      const isSensitive = SENSITIVE_FIELD_KEYS.has(field.key);
+                                      const isInHintMode = isSensitive && hintMode[formKey];
+                                      const isMenuOpen = openComboMenu === formKey;
                                       return (
                                         <div className="form-group" key={field.key}>
-                                          <label>{field.label}</label>
-                                          <input
-                                            type={field.type || 'text'}
-                                            value={acctForm[formKey]}
-                                            onChange={e => setAcctForm(f => ({ ...f, [formKey]: e.target.value }))}
-                                            placeholder={field.placeholder}
-                                          />
+                                          <label>
+                                            {field.label}
+                                            {isInHintMode && <span className="hint-mode-badge">Hint</span>}
+                                          </label>
+                                          {isSensitive ? (
+                                            <div className="sensitive-combo-field">
+                                              <input
+                                                type={isInHintMode ? 'text' : (field.type || 'text')}
+                                                value={acctForm[formKey]}
+                                                onChange={e => setAcctForm(f => ({ ...f, [formKey]: e.target.value }))}
+                                                placeholder={isInHintMode ? `Hint for ${field.label.toLowerCase()}...` : field.placeholder}
+                                                className={isInHintMode ? 'hint-input' : ''}
+                                              />
+                                              <div className="sensitive-combo-toggle">
+                                                <button
+                                                  type="button"
+                                                  className="btn btn-icon btn-combo-toggle"
+                                                  onClick={() => setOpenComboMenu(isMenuOpen ? null : formKey)}
+                                                >
+                                                  <ChevronDown size={14} />
+                                                </button>
+                                                {isMenuOpen && (
+                                                  <>
+                                                    <div className="combo-backdrop" onClick={() => setOpenComboMenu(null)} />
+                                                    <div className="sensitive-combo-menu open">
+                                                      <button
+                                                        type="button"
+                                                        className={`sensitive-combo-option${!isInHintMode ? ' active' : ''}`}
+                                                        onClick={() => { setHintMode(prev => ({ ...prev, [formKey]: false })); setOpenComboMenu(null); }}
+                                                      >
+                                                        <Lock size={14} />
+                                                        <div>
+                                                          <strong>Value</strong>
+                                                          <span>Store the actual {field.label.toLowerCase()} (encrypted)</span>
+                                                        </div>
+                                                      </button>
+                                                      <button
+                                                        type="button"
+                                                        className={`sensitive-combo-option${isInHintMode ? ' active' : ''}`}
+                                                        onClick={() => { setHintMode(prev => ({ ...prev, [formKey]: true })); setOpenComboMenu(null); }}
+                                                      >
+                                                        <AlertCircle size={14} />
+                                                        <div>
+                                                          <strong>Hint</strong>
+                                                          <span>Store a hint or reference instead</span>
+                                                        </div>
+                                                      </button>
+                                                    </div>
+                                                  </>
+                                                )}
+                                              </div>
+                                            </div>
+                                          ) : (
+                                            <input
+                                              type={field.type || 'text'}
+                                              value={acctForm[formKey]}
+                                              onChange={e => setAcctForm(f => ({ ...f, [formKey]: e.target.value }))}
+                                              placeholder={field.placeholder}
+                                            />
+                                          )}
                                         </div>
                                       );
                                     })}
@@ -796,48 +879,76 @@ export default function CategoryDetail() {
                               </div>
                               <div className="account-details">
                                 {acct.accountNumber && (
-                                  <div>
-                                    <label>Account #:</label>
-                                    <span className="password-field">
-                                      {revealedFields.has(`${acct.id}-acct`) ? acct.accountNumber : maskValue(acct.accountNumber)}
-                                      <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-acct`)}>
-                                        {revealedFields.has(`${acct.id}-acct`) ? <EyeOff size={14} /> : <Eye size={14} />}
-                                      </button>
-                                    </span>
-                                  </div>
+                                  isHint(acct.accountNumber) ? (
+                                    <div>
+                                      <label>Account #:</label>
+                                      <span className="hint-display"><AlertCircle size={14} className="hint-icon" /><em>{getHintText(acct.accountNumber)}</em></span>
+                                    </div>
+                                  ) : (
+                                    <div>
+                                      <label>Account #:</label>
+                                      <span className="password-field">
+                                        {revealedFields.has(`${acct.id}-acct`) ? acct.accountNumber : maskValue(acct.accountNumber)}
+                                        <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-acct`)}>
+                                          {revealedFields.has(`${acct.id}-acct`) ? <EyeOff size={14} /> : <Eye size={14} />}
+                                        </button>
+                                      </span>
+                                    </div>
+                                  )
                                 )}
                                 {acct.routingNumber && (
-                                  <div>
-                                    <label>Routing #:</label>
-                                    <span className="password-field">
-                                      {revealedFields.has(`${acct.id}-rtn`) ? acct.routingNumber : maskValue(acct.routingNumber)}
-                                      <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-rtn`)}>
-                                        {revealedFields.has(`${acct.id}-rtn`) ? <EyeOff size={14} /> : <Eye size={14} />}
-                                      </button>
-                                    </span>
-                                  </div>
+                                  isHint(acct.routingNumber) ? (
+                                    <div>
+                                      <label>Routing #:</label>
+                                      <span className="hint-display"><AlertCircle size={14} className="hint-icon" /><em>{getHintText(acct.routingNumber)}</em></span>
+                                    </div>
+                                  ) : (
+                                    <div>
+                                      <label>Routing #:</label>
+                                      <span className="password-field">
+                                        {revealedFields.has(`${acct.id}-rtn`) ? acct.routingNumber : maskValue(acct.routingNumber)}
+                                        <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-rtn`)}>
+                                          {revealedFields.has(`${acct.id}-rtn`) ? <EyeOff size={14} /> : <Eye size={14} />}
+                                        </button>
+                                      </span>
+                                    </div>
+                                  )
                                 )}
                                 {acct.username && (
-                                  <div>
-                                    <label>Username:</label>
-                                    <span className="password-field">
-                                      {revealedFields.has(`${acct.id}-user`) ? acct.username : maskValue(acct.username)}
-                                      <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-user`)}>
-                                        {revealedFields.has(`${acct.id}-user`) ? <EyeOff size={14} /> : <Eye size={14} />}
-                                      </button>
-                                    </span>
-                                  </div>
+                                  isHint(acct.username) ? (
+                                    <div>
+                                      <label>Username:</label>
+                                      <span className="hint-display"><AlertCircle size={14} className="hint-icon" /><em>{getHintText(acct.username)}</em></span>
+                                    </div>
+                                  ) : (
+                                    <div>
+                                      <label>Username:</label>
+                                      <span className="password-field">
+                                        {revealedFields.has(`${acct.id}-user`) ? acct.username : maskValue(acct.username)}
+                                        <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-user`)}>
+                                          {revealedFields.has(`${acct.id}-user`) ? <EyeOff size={14} /> : <Eye size={14} />}
+                                        </button>
+                                      </span>
+                                    </div>
+                                  )
                                 )}
                                 {acct.passwordEncrypted && (
-                                  <div>
-                                    <label>Password:</label>
-                                    <span className="password-field">
-                                      {revealedFields.has(`${acct.id}-pass`) ? acct.passwordEncrypted : '••••••••'}
-                                      <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-pass`)}>
-                                        {revealedFields.has(`${acct.id}-pass`) ? <EyeOff size={14} /> : <Eye size={14} />}
-                                      </button>
-                                    </span>
-                                  </div>
+                                  isHint(acct.passwordEncrypted) ? (
+                                    <div>
+                                      <label>Password:</label>
+                                      <span className="hint-display"><AlertCircle size={14} className="hint-icon" /><em>{getHintText(acct.passwordEncrypted)}</em></span>
+                                    </div>
+                                  ) : (
+                                    <div>
+                                      <label>Password:</label>
+                                      <span className="password-field">
+                                        {revealedFields.has(`${acct.id}-pass`) ? acct.passwordEncrypted : '••••••••'}
+                                        <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-pass`)}>
+                                          {revealedFields.has(`${acct.id}-pass`) ? <EyeOff size={14} /> : <Eye size={14} />}
+                                        </button>
+                                      </span>
+                                    </div>
+                                  )
                                 )}
                                 {acct.url && <div><label>URL:</label> <a href={acct.url.startsWith('http') ? acct.url : `https://${acct.url}`} target="_blank" rel="noreferrer">{acct.url}</a></div>}
                                 {acct.estimatedValue && <div><label>Value:</label> <span>{acct.estimatedValue}</span></div>}
