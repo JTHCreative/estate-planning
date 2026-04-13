@@ -155,6 +155,34 @@ a:hover { text-decoration: underline; }
 
 .custom-type-input input { flex: 1; }
 
+/* Currency field (dropdown + value input) */
+.currency-field {
+  display: flex;
+  align-items: stretch;
+}
+.currency-select {
+  width: auto !important;
+  min-width: 0;
+  flex-shrink: 0;
+  border-top-right-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  border-right: none !important;
+  padding: 10px 8px !important;
+  font-size: 13px !important;
+  color: var(--text-muted);
+  background: var(--bg-input);
+}
+.currency-field input {
+  flex: 1;
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+}
+.currency-symbol {
+  font-weight: 600;
+  margin-right: 2px;
+  color: var(--primary);
+}
+
 .pin-input {
   font-family: monospace;
   font-size: 20px !important;

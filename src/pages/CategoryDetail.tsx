@@ -9,7 +9,7 @@ import {
 import type { Institution, Account } from '../lib/storage';
 import {
   categoryFields, defaultFields, institutionPresets, presetIcons, fieldToFormKey,
-  SENSITIVE_FIELD_KEYS,
+  SENSITIVE_FIELD_KEYS, CURRENCIES, DEFAULT_CURRENCY, getCurrencySymbol, NON_MONETARY_VALUE_CATEGORIES,
   Plus, ArrowLeft, Trash2, Edit3, ChevronDown, ChevronRight, Eye, EyeOff, X,
 } from '../lib/categoryConfig';
 import { AlertCircle, Lock, MoreHorizontal } from 'lucide-react';
@@ -41,7 +41,7 @@ export default function CategoryDetail() {
   const [acctForm, setAcctForm] = useState({
     accountName: '', accountType: '', accountNumber: '', routingNumber: '',
     username: '', password: '', url: '', contactName: '', contactPhone: '',
-    contactEmail: '', estimatedValue: '', beneficiary: '', notes: ''
+    contactEmail: '', estimatedValue: '', currency: DEFAULT_CURRENCY, beneficiary: '', notes: ''
   });
   const [hintMode, setHintMode] = useState<Record<string, boolean>>({});
   const [openComboMenu, setOpenComboMenu] = useState<string | null>(null);
@@ -87,7 +87,7 @@ export default function CategoryDetail() {
     setAcctForm({
       accountName: '', accountType: '', accountNumber: '', routingNumber: '',
       username: '', password: '', url: '', contactName: '', contactPhone: '',
-      contactEmail: '', estimatedValue: '', beneficiary: '', notes: ''
+      contactEmail: '', estimatedValue: '', currency: DEFAULT_CURRENCY, beneficiary: '', notes: ''
     });
     setHintMode({});
     setOpenComboMenu(null);
@@ -138,7 +138,7 @@ export default function CategoryDetail() {
         username: uname, passwordEncrypted: pwd,
         url: acctForm.url || null, contactName: acctForm.contactName || null,
         contactPhone: acctForm.contactPhone || null, contactEmail: acctForm.contactEmail || null,
-        estimatedValue: acctForm.estimatedValue || null, beneficiary: acctForm.beneficiary || null,
+        estimatedValue: acctForm.estimatedValue || null, currency: acctForm.currency || DEFAULT_CURRENCY, beneficiary: acctForm.beneficiary || null,
         notes: acctForm.notes || null,
       });
       setEditingAcct(null);
@@ -150,7 +150,7 @@ export default function CategoryDetail() {
         passwordEncrypted: pwd, url: acctForm.url || null,
         contactName: acctForm.contactName || null, contactPhone: acctForm.contactPhone || null,
         contactEmail: acctForm.contactEmail || null, estimatedValue: acctForm.estimatedValue || null,
-        beneficiary: acctForm.beneficiary || null, notes: acctForm.notes || null,
+        currency: acctForm.currency || DEFAULT_CURRENCY, beneficiary: acctForm.beneficiary || null, notes: acctForm.notes || null,
       });
     }
     resetAcctForm();
@@ -197,7 +197,7 @@ export default function CategoryDetail() {
       username: username, password: password,
       url: acct.url || '', contactName: acct.contactName || '',
       contactPhone: acct.contactPhone || '', contactEmail: acct.contactEmail || '',
-      estimatedValue: acct.estimatedValue || '', beneficiary: acct.beneficiary || '',
+      estimatedValue: acct.estimatedValue || '', currency: acct.currency || DEFAULT_CURRENCY, beneficiary: acct.beneficiary || '',
       notes: acct.notes || ''
     });
     setHintMode(editHintMode);
@@ -356,6 +356,7 @@ export default function CategoryDetail() {
                                       const isSensitive = SENSITIVE_FIELD_KEYS.has(field.key);
                                       const isInHintMode = isSensitive && hintMode[formKey];
                                       const isMenuOpen = openComboMenu === formKey;
+                                      const isMonetary = field.key === 'estimatedValue' && !NON_MONETARY_VALUE_CATEGORIES.has(categoryId!);
                                       return (
                                         <div className="form-group" key={field.key}>
                                           <label>
@@ -418,6 +419,24 @@ export default function CategoryDetail() {
                                                   </>
                                                 )}
                                               </div>
+                                            </div>
+                                          ) : isMonetary ? (
+                                            <div className="currency-field">
+                                              <select
+                                                className="currency-select"
+                                                value={acctForm.currency}
+                                                onChange={e => setAcctForm(f => ({ ...f, currency: e.target.value }))}
+                                              >
+                                                {CURRENCIES.map(c => (
+                                                  <option key={c.code} value={c.code}>{c.code} ({c.symbol})</option>
+                                                ))}
+                                              </select>
+                                              <input
+                                                type="text"
+                                                value={acctForm[formKey]}
+                                                onChange={e => setAcctForm(f => ({ ...f, [formKey]: e.target.value }))}
+                                                placeholder={field.placeholder}
+                                              />
                                             </div>
                                           ) : (
                                             <input
@@ -563,7 +582,7 @@ export default function CategoryDetail() {
                                   );
                                 })()}
                                 {acct.url && <div><label>URL:</label> <a href={acct.url.startsWith('http') ? acct.url : `https://${acct.url}`} target="_blank" rel="noreferrer">{acct.url}</a></div>}
-                                {acct.estimatedValue && <div><label>Value:</label> <span>{acct.estimatedValue}</span></div>}
+                                {acct.estimatedValue && <div><label>Value:</label> <span><span className="currency-symbol">{getCurrencySymbol(acct.currency)}</span>{acct.estimatedValue}</span></div>}
                                 {acct.beneficiary && <div><label>Beneficiary:</label> <span>{acct.beneficiary}</span></div>}
                                 {acct.contactName && <div><label>Contact:</label> <span>{acct.contactName} {acct.contactPhone ? `· ${acct.contactPhone}` : ''} {acct.contactEmail ? `· ${acct.contactEmail}` : ''}</span></div>}
                                 {acct.notes && <div><label>Notes:</label> <span>{acct.notes}</span></div>}

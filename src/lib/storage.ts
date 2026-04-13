@@ -62,6 +62,7 @@ export interface Account {
   contactPhone: string | null;
   contactEmail: string | null;
   estimatedValue: string | null;
+  currency: string | null;
   beneficiary: string | null;
   notes: string | null;
   createdAt: any;
