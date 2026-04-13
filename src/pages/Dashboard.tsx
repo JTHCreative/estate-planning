@@ -307,8 +307,10 @@ export default function Dashboard() {
   const decryptOwnerFields = async (ownerId: string) => {
     const key = userKeysRef.current.get(ownerId);
     if (!key) return;
-    const newDecrypted = new Map(decryptedFields);
+    // Collect decrypted entries first, then merge via functional update
+    // to avoid stale closure issues with decryptedFields
     const ownerAccts = allAccounts.filter(a => a.userId === ownerId);
+    const newEntries: Array<[string, string]> = [];
     for (const acct of ownerAccts) {
       const fields: Array<['acct' | 'rtn' | 'user' | 'pass', string | null]> = [
         ['acct', acct.accountNumber],
@@ -319,18 +321,23 @@ export default function Dashboard() {
       for (const [tag, val] of fields) {
         if (val && isEncrypted(val)) {
           const plain = await decryptWithKey(val, key);
-          newDecrypted.set(`${acct.id}-${tag}`, plain);
+          newEntries.push([`${acct.id}-${tag}`, plain]);
         }
       }
     }
-    setDecryptedFields(newDecrypted);
+    setDecryptedFields(prev => {
+      const next = new Map(prev);
+      for (const [k, v] of newEntries) next.set(k, v);
+      return next;
+    });
   };
 
   // Get the plain (or decrypted) value for a sensitive field
   const getFieldValue = (acctId: string, tag: string, raw: string | null): string => {
     if (!raw) return '';
     if (!isEncrypted(raw)) return raw;
-    return decryptedFields.get(`${acctId}-${tag}`) || raw;
+    const decrypted = decryptedFields.get(`${acctId}-${tag}`);
+    return decrypted !== undefined ? decrypted : raw;
   };
 
   // Handlers: field masking
