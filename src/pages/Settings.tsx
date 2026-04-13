@@ -69,8 +69,8 @@ export default function Settings() {
   const handleCancelDeletion = async () => {
     try {
       await cancelAccountDeletion();
-    } catch {
-      // ignore
+    } catch (err) {
+      console.error('Failed to cancel deletion:', err);
     }
   };
 
