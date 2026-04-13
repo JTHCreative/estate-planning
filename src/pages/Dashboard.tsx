@@ -1334,7 +1334,7 @@ export default function Dashboard() {
           savePendingAccountRef.current = null;
         };
         return (
-          <div className="modal-overlay" onClick={closePrompt}>
+          <div className="modal-overlay" style={{ zIndex: 110 }} onClick={closePrompt}>
             <div className="modal pin-modal" onClick={e => e.stopPropagation()}>
               <div className="modal-header">
                 <h3><Icons.Lock size={18} /> {pinPromptIsSetup ? 'Set a PIN' : 'Enter PIN'}</h3>
