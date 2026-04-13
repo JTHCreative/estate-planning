@@ -238,6 +238,15 @@ export default function Dashboard() {
     }
   }, [selectedCategoryId, loadCategoryData]);
 
+  // Re-decrypt fields for unlocked users when accounts change (e.g. after adding a new account)
+  useEffect(() => {
+    unlockedUsers.forEach(ownerId => {
+      if (userKeysRef.current.has(ownerId)) {
+        decryptOwnerFields(ownerId);
+      }
+    });
+  }, [allAccounts]);
+
   // Auto-select first institution when category data loads
   useEffect(() => {
     if (selectedCategoryId && categoryInstitutions.length > 0 && !selectedInstitutionId) {
@@ -882,8 +891,8 @@ export default function Dashboard() {
                   {categoryInstitutions.map(inst => {
                     const instAccts = accounts.filter(a => a.institutionId === inst.id && activeUserIds.has(a.userId));
                     const instAcctCount = instAccts.length;
-                    // Get unique users who have accounts in this institution
-                    const userIds = [...new Set(instAccts.map(a => a.userId))];
+                    // Get unique users: always include the owner, plus anyone with accounts
+                    const userIds = [...new Set([inst.userId, ...instAccts.map(a => a.userId)])];
                     const instUsers = userIds.map(uid => allMembers.find(m => m.id === uid)).filter(Boolean);
                     return (
                       <div
@@ -899,8 +908,9 @@ export default function Dashboard() {
                           <div className={`inst-user-avatars${instUsers.length > 3 ? ' wrap' : ''}`}>
                             {instUsers.map(m => {
                               const mInitials = `${m!.firstName?.[0] || ''}${m!.lastName?.[0] || ''}`.toUpperCase();
+                              const isOwner = m!.id === inst.userId;
                               return (
-                                <div key={m!.id} className="inst-user-avatar" title={`${m!.firstName} ${m!.lastName}`}>
+                                <div key={m!.id} className={`inst-user-avatar${isOwner ? ' owner' : ''}`} title={`${m!.firstName} ${m!.lastName}${isOwner ? ' (Owner)' : ''}`}>
                                   {m!.photoURL
                                     ? <img src={m!.photoURL} alt="" />
                                     : <span>{mInitials}</span>
