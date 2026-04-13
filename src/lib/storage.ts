@@ -469,18 +469,22 @@ export async function getAccounts(userId: string, institutionId?: string): Promi
 }
 
 export async function addAccount(userId: string, data: Omit<Account, 'id' | 'userId' | 'createdAt'>): Promise<Account> {
-  // If adding to someone else's institution, become a co-owner
-  const instSnap = await getDoc(doc(db, 'institutions', data.institutionId));
-  if (instSnap.exists()) {
-    const inst = instSnap.data() as Institution;
-    if (inst.userId !== userId) {
-      const existing = inst.coOwnerIds || [];
-      if (!existing.includes(userId)) {
-        await updateDoc(doc(db, 'institutions', data.institutionId), {
-          coOwnerIds: [...existing, userId],
-        });
+  // If adding to someone else's institution, try to become a co-owner (non-blocking)
+  try {
+    const instSnap = await getDoc(doc(db, 'institutions', data.institutionId));
+    if (instSnap.exists()) {
+      const inst = instSnap.data() as Institution;
+      if (inst.userId !== userId) {
+        const existing = inst.coOwnerIds || [];
+        if (!existing.includes(userId)) {
+          await updateDoc(doc(db, 'institutions', data.institutionId), {
+            coOwnerIds: [...existing, userId],
+          });
+        }
       }
     }
+  } catch {
+    // Co-owner update may fail if rules don't allow it — continue with account creation
   }
 
   const ref = doc(collection(db, 'accounts'));
