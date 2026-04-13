@@ -878,78 +878,102 @@ export default function CategoryDetail() {
                                 </div>
                               </div>
                               <div className="account-details">
-                                {acct.accountNumber && (
-                                  isHint(acct.accountNumber) ? (
+                                {acct.accountNumber && (() => {
+                                  const raw = acct.accountNumber;
+                                  const hintVal = isHint(raw);
+                                  const displayVal = hintVal ? getHintText(raw) : raw;
+                                  const revealed = revealedFields.has(`${acct.id}-acct`);
+                                  return (
                                     <div>
                                       <label>Account #:</label>
-                                      <span className="hint-display"><AlertCircle size={14} className="hint-icon" /><em>{getHintText(acct.accountNumber)}</em></span>
+                                      {revealed && hintVal ? (
+                                        <span className="hint-display">
+                                          <AlertCircle size={14} className="hint-icon" /><em>{displayVal}</em>
+                                          <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-acct`)}><EyeOff size={14} /></button>
+                                        </span>
+                                      ) : (
+                                        <span className="password-field">
+                                          {revealed ? displayVal : maskValue(displayVal)}
+                                          <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-acct`)}>
+                                            {revealed ? <EyeOff size={14} /> : <Eye size={14} />}
+                                          </button>
+                                        </span>
+                                      )}
                                     </div>
-                                  ) : (
-                                    <div>
-                                      <label>Account #:</label>
-                                      <span className="password-field">
-                                        {revealedFields.has(`${acct.id}-acct`) ? acct.accountNumber : maskValue(acct.accountNumber)}
-                                        <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-acct`)}>
-                                          {revealedFields.has(`${acct.id}-acct`) ? <EyeOff size={14} /> : <Eye size={14} />}
-                                        </button>
-                                      </span>
-                                    </div>
-                                  )
-                                )}
-                                {acct.routingNumber && (
-                                  isHint(acct.routingNumber) ? (
+                                  );
+                                })()}
+                                {acct.routingNumber && (() => {
+                                  const raw = acct.routingNumber;
+                                  const hintVal = isHint(raw);
+                                  const displayVal = hintVal ? getHintText(raw) : raw;
+                                  const revealed = revealedFields.has(`${acct.id}-rtn`);
+                                  return (
                                     <div>
                                       <label>Routing #:</label>
-                                      <span className="hint-display"><AlertCircle size={14} className="hint-icon" /><em>{getHintText(acct.routingNumber)}</em></span>
+                                      {revealed && hintVal ? (
+                                        <span className="hint-display">
+                                          <AlertCircle size={14} className="hint-icon" /><em>{displayVal}</em>
+                                          <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-rtn`)}><EyeOff size={14} /></button>
+                                        </span>
+                                      ) : (
+                                        <span className="password-field">
+                                          {revealed ? displayVal : maskValue(displayVal)}
+                                          <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-rtn`)}>
+                                            {revealed ? <EyeOff size={14} /> : <Eye size={14} />}
+                                          </button>
+                                        </span>
+                                      )}
                                     </div>
-                                  ) : (
-                                    <div>
-                                      <label>Routing #:</label>
-                                      <span className="password-field">
-                                        {revealedFields.has(`${acct.id}-rtn`) ? acct.routingNumber : maskValue(acct.routingNumber)}
-                                        <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-rtn`)}>
-                                          {revealedFields.has(`${acct.id}-rtn`) ? <EyeOff size={14} /> : <Eye size={14} />}
-                                        </button>
-                                      </span>
-                                    </div>
-                                  )
-                                )}
-                                {acct.username && (
-                                  isHint(acct.username) ? (
+                                  );
+                                })()}
+                                {acct.username && (() => {
+                                  const raw = acct.username;
+                                  const hintVal = isHint(raw);
+                                  const displayVal = hintVal ? getHintText(raw) : raw;
+                                  const revealed = revealedFields.has(`${acct.id}-user`);
+                                  return (
                                     <div>
                                       <label>Username:</label>
-                                      <span className="hint-display"><AlertCircle size={14} className="hint-icon" /><em>{getHintText(acct.username)}</em></span>
+                                      {revealed && hintVal ? (
+                                        <span className="hint-display">
+                                          <AlertCircle size={14} className="hint-icon" /><em>{displayVal}</em>
+                                          <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-user`)}><EyeOff size={14} /></button>
+                                        </span>
+                                      ) : (
+                                        <span className="password-field">
+                                          {revealed ? displayVal : maskValue(displayVal)}
+                                          <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-user`)}>
+                                            {revealed ? <EyeOff size={14} /> : <Eye size={14} />}
+                                          </button>
+                                        </span>
+                                      )}
                                     </div>
-                                  ) : (
-                                    <div>
-                                      <label>Username:</label>
-                                      <span className="password-field">
-                                        {revealedFields.has(`${acct.id}-user`) ? acct.username : maskValue(acct.username)}
-                                        <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-user`)}>
-                                          {revealedFields.has(`${acct.id}-user`) ? <EyeOff size={14} /> : <Eye size={14} />}
-                                        </button>
-                                      </span>
-                                    </div>
-                                  )
-                                )}
-                                {acct.passwordEncrypted && (
-                                  isHint(acct.passwordEncrypted) ? (
+                                  );
+                                })()}
+                                {acct.passwordEncrypted && (() => {
+                                  const raw = acct.passwordEncrypted;
+                                  const hintVal = isHint(raw);
+                                  const displayVal = hintVal ? getHintText(raw) : raw;
+                                  const revealed = revealedFields.has(`${acct.id}-pass`);
+                                  return (
                                     <div>
                                       <label>Password:</label>
-                                      <span className="hint-display"><AlertCircle size={14} className="hint-icon" /><em>{getHintText(acct.passwordEncrypted)}</em></span>
+                                      {revealed && hintVal ? (
+                                        <span className="hint-display">
+                                          <AlertCircle size={14} className="hint-icon" /><em>{displayVal}</em>
+                                          <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-pass`)}><EyeOff size={14} /></button>
+                                        </span>
+                                      ) : (
+                                        <span className="password-field">
+                                          {revealed ? displayVal : '••••••••'}
+                                          <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-pass`)}>
+                                            {revealed ? <EyeOff size={14} /> : <Eye size={14} />}
+                                          </button>
+                                        </span>
+                                      )}
                                     </div>
-                                  ) : (
-                                    <div>
-                                      <label>Password:</label>
-                                      <span className="password-field">
-                                        {revealedFields.has(`${acct.id}-pass`) ? acct.passwordEncrypted : '••••••••'}
-                                        <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-pass`)}>
-                                          {revealedFields.has(`${acct.id}-pass`) ? <EyeOff size={14} /> : <Eye size={14} />}
-                                        </button>
-                                      </span>
-                                    </div>
-                                  )
-                                )}
+                                  );
+                                })()}
                                 {acct.url && <div><label>URL:</label> <a href={acct.url.startsWith('http') ? acct.url : `https://${acct.url}`} target="_blank" rel="noreferrer">{acct.url}</a></div>}
                                 {acct.estimatedValue && <div><label>Value:</label> <span>{acct.estimatedValue}</span></div>}
                                 {acct.beneficiary && <div><label>Beneficiary:</label> <span>{acct.beneficiary}</span></div>}
