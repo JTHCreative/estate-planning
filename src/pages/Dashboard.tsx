@@ -4,13 +4,15 @@ import {
   CATEGORIES, getInstitutions, getAccounts,
   addInstitution, updateInstitution, deleteInstitution,
   addAccount, updateAccount, deleteAccount, verifyPin, getUserProfile,
-  deriveKeyFromPin, encryptWithKey, decryptWithKey, isEncrypted,
+  deriveKeyFromPin, encryptWithKey, decryptWithKey, isEncrypted, isHint, getHintText,
 } from '../lib/storage';
 import type { Institution, Account } from '../lib/storage';
 import {
   categoryFields, defaultFields, institutionPresets, presetIcons, fieldToFormKey,
+  SENSITIVE_FIELD_KEYS,
   Plus, Trash2, Edit3, Eye, EyeOff, X, MoreHorizontal,
   DollarSign, ShieldCheck, Home, Briefcase, Globe, Zap, Heart,
+  type LucideIcon,
 } from '../lib/categoryConfig';
 import * as Icons from 'lucide-react';
 
@@ -19,7 +21,7 @@ type AccountWithOwner = Account & { ownerName: string };
 
 interface RootCategory {
   name: string;
-  icon: any;
+  icon: LucideIcon;
   categoryIds: string[];
 }
 
@@ -33,7 +35,7 @@ const rootCategories: RootCategory[] = [
   { name: 'People & Wishes', icon: Heart, categoryIds: ['emergency-contacts', 'final-wishes'] },
 ];
 
-const iconMap: Record<string, any> = {
+const iconMap: Record<string, LucideIcon> = {
   'landmark': Icons.Landmark,
   'trending-up': Icons.TrendingUp,
   'piggy-bank': Icons.PiggyBank,
@@ -141,6 +143,12 @@ export default function Dashboard() {
     username: '', password: '', url: '', contactName: '', contactPhone: '',
     contactEmail: '', estimatedValue: '', beneficiary: '', notes: ''
   });
+  // Track which sensitive fields are in "hint" mode (key = formKey)
+  const [hintMode, setHintMode] = useState<Record<string, boolean>>({});
+  // Track which combo dropdown menu is currently open (null = none)
+  const [openComboMenu, setOpenComboMenu] = useState<string | null>(null);
+  // Track which password-type form inputs are showing plaintext
+  const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
 
   // Reveal state for masked fields
   const [revealedFields, setRevealedFields] = useState<Set<string>>(new Set());
@@ -301,8 +309,10 @@ export default function Dashboard() {
   const decryptOwnerFields = async (ownerId: string) => {
     const key = userKeysRef.current.get(ownerId);
     if (!key) return;
-    const newDecrypted = new Map(decryptedFields);
+    // Collect decrypted entries first, then merge via functional update
+    // to avoid stale closure issues with decryptedFields
     const ownerAccts = allAccounts.filter(a => a.userId === ownerId);
+    const newEntries: Array<[string, string]> = [];
     for (const acct of ownerAccts) {
       const fields: Array<['acct' | 'rtn' | 'user' | 'pass', string | null]> = [
         ['acct', acct.accountNumber],
@@ -313,18 +323,23 @@ export default function Dashboard() {
       for (const [tag, val] of fields) {
         if (val && isEncrypted(val)) {
           const plain = await decryptWithKey(val, key);
-          newDecrypted.set(`${acct.id}-${tag}`, plain);
+          newEntries.push([`${acct.id}-${tag}`, plain]);
         }
       }
     }
-    setDecryptedFields(newDecrypted);
+    setDecryptedFields(prev => {
+      const next = new Map(prev);
+      for (const [k, v] of newEntries) next.set(k, v);
+      return next;
+    });
   };
 
   // Get the plain (or decrypted) value for a sensitive field
   const getFieldValue = (acctId: string, tag: string, raw: string | null): string => {
     if (!raw) return '';
     if (!isEncrypted(raw)) return raw;
-    return decryptedFields.get(`${acctId}-${tag}`) || raw;
+    const decrypted = decryptedFields.get(`${acctId}-${tag}`);
+    return decrypted !== undefined ? decrypted : raw;
   };
 
   // Handlers: field masking
@@ -426,11 +441,16 @@ export default function Dashboard() {
 
   // Handlers: forms
   const resetInstForm = () => setInstForm({ name: '', website: '', phone: '', notes: '' });
-  const resetAcctForm = () => setAcctForm({
-    accountName: '', accountType: '', accountNumber: '', routingNumber: '',
-    username: '', password: '', url: '', contactName: '', contactPhone: '',
-    contactEmail: '', estimatedValue: '', beneficiary: '', notes: ''
-  });
+  const resetAcctForm = () => {
+    setAcctForm({
+      accountName: '', accountType: '', accountNumber: '', routingNumber: '',
+      username: '', password: '', url: '', contactName: '', contactPhone: '',
+      contactEmail: '', estimatedValue: '', beneficiary: '', notes: ''
+    });
+    setHintMode({});
+    setOpenComboMenu(null);
+    setVisiblePasswords({});
+  };
 
   // Institution CRUD
   const handleAddInstitution = async (e: React.FormEvent) => {
@@ -475,18 +495,23 @@ export default function Dashboard() {
   const performAccountSave = async () => {
     if (!user || !selectedInstitutionId) return;
 
-    // Always encrypt sensitive fields. If the user has no PIN yet, prompt them
-    // to set one before saving so the data is never written as plaintext.
+    // Prepare sensitive fields: hints get "hint:" prefix baked into the value before encryption
     let acctNum = acctForm.accountNumber || null;
     let rtnNum = acctForm.routingNumber || null;
     let username = acctForm.username || null;
     let password = acctForm.password || null;
 
+    // Apply hint prefix for fields in hint mode (prefix is encrypted along with the value)
+    if (hintMode.accountNumber && acctNum) acctNum = `hint:${acctNum}`;
+    if (hintMode.routingNumber && rtnNum) rtnNum = `hint:${rtnNum}`;
+    if (hintMode.username && username) username = `hint:${username}`;
+    if (hintMode.password && password) password = `hint:${password}`;
+
+    // Encrypt ALL sensitive fields (including hints)
     const hasSensitiveData = !!(acctNum || rtnNum || username || password);
 
     if (hasSensitiveData) {
       if (!user.hasPin) {
-        // No PIN yet — prompt user to set one before we can encrypt and save
         savePendingAccountRef.current = () => { performAccountSave(); };
         setPinPromptUserId(user.id);
         setPinPromptFieldKey(null);
@@ -499,7 +524,6 @@ export default function Dashboard() {
       }
       const key = userKeysRef.current.get(user.id);
       if (!key) {
-        // Need to prompt for PIN to derive key
         savePendingAccountRef.current = () => { performAccountSave(); };
         setPinPromptUserId(user.id);
         setPinPromptFieldKey(null);
@@ -586,6 +610,13 @@ export default function Dashboard() {
       if (isEncrypted(password)) password = await decryptWithKey(password, key);
     }
 
+    // Detect which decrypted fields are hints and restore hint mode
+    const editHintMode: Record<string, boolean> = {};
+    if (isHint(acctNum)) { editHintMode.accountNumber = true; acctNum = getHintText(acctNum); }
+    if (isHint(rtnNum)) { editHintMode.routingNumber = true; rtnNum = getHintText(rtnNum); }
+    if (isHint(username)) { editHintMode.username = true; username = getHintText(username); }
+    if (isHint(password)) { editHintMode.password = true; password = getHintText(password); }
+
     setAcctForm({
       accountName: acct.accountName, accountType: acct.accountType || '',
       accountNumber: acctNum, routingNumber: rtnNum,
@@ -595,6 +626,7 @@ export default function Dashboard() {
       estimatedValue: acct.estimatedValue || '', beneficiary: acct.beneficiary || '',
       notes: acct.notes || ''
     });
+    setHintMode(editHintMode);
     setEditingAcct(acct);
     setShowAcctForm(true);
   };
@@ -953,15 +985,24 @@ export default function Dashboard() {
                               const plain = getFieldValue(acct.id, 'acct', acct.accountNumber);
                               const isEnc = isEncrypted(acct.accountNumber);
                               const canRead = !isEnc || decryptedFields.has(`${acct.id}-acct`);
+                              const revealed = revealedFields.has(`${acct.id}-acct`) && canRead;
+                              const hintVal = canRead && isHint(plain);
                               return (
                                 <div>
                                   <label>Account #:</label>
-                                  <span className="password-field">
-                                    {revealedFields.has(`${acct.id}-acct`) && canRead ? plain : (canRead ? maskValue(plain) : '••••••••')}
-                                    <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-acct`, acct.userId)}>
-                                      {revealedFields.has(`${acct.id}-acct`) ? <EyeOff size={14} /> : <Eye size={14} />}
-                                    </button>
-                                  </span>
+                                  {revealed && hintVal ? (
+                                    <span className="hint-display">
+                                      <Icons.AlertCircle size={14} className="hint-icon" /><em>{getHintText(plain)}</em>
+                                      <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-acct`, acct.userId)}><EyeOff size={14} /></button>
+                                    </span>
+                                  ) : (
+                                    <span className="password-field">
+                                      {revealed ? plain : (canRead ? maskValue(hintVal ? getHintText(plain) : plain) : '••••••••')}
+                                      <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-acct`, acct.userId)}>
+                                        {revealed ? <EyeOff size={14} /> : <Eye size={14} />}
+                                      </button>
+                                    </span>
+                                  )}
                                 </div>
                               );
                             })()}
@@ -969,15 +1010,24 @@ export default function Dashboard() {
                               const plain = getFieldValue(acct.id, 'rtn', acct.routingNumber);
                               const isEnc = isEncrypted(acct.routingNumber);
                               const canRead = !isEnc || decryptedFields.has(`${acct.id}-rtn`);
+                              const revealed = revealedFields.has(`${acct.id}-rtn`) && canRead;
+                              const hintVal = canRead && isHint(plain);
                               return (
                                 <div>
                                   <label>Routing #:</label>
-                                  <span className="password-field">
-                                    {revealedFields.has(`${acct.id}-rtn`) && canRead ? plain : (canRead ? maskValue(plain) : '••••••••')}
-                                    <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-rtn`, acct.userId)}>
-                                      {revealedFields.has(`${acct.id}-rtn`) ? <EyeOff size={14} /> : <Eye size={14} />}
-                                    </button>
-                                  </span>
+                                  {revealed && hintVal ? (
+                                    <span className="hint-display">
+                                      <Icons.AlertCircle size={14} className="hint-icon" /><em>{getHintText(plain)}</em>
+                                      <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-rtn`, acct.userId)}><EyeOff size={14} /></button>
+                                    </span>
+                                  ) : (
+                                    <span className="password-field">
+                                      {revealed ? plain : (canRead ? maskValue(hintVal ? getHintText(plain) : plain) : '••••••••')}
+                                      <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-rtn`, acct.userId)}>
+                                        {revealed ? <EyeOff size={14} /> : <Eye size={14} />}
+                                      </button>
+                                    </span>
+                                  )}
                                 </div>
                               );
                             })()}
@@ -985,15 +1035,24 @@ export default function Dashboard() {
                               const plain = getFieldValue(acct.id, 'user', acct.username);
                               const isEnc = isEncrypted(acct.username);
                               const canRead = !isEnc || decryptedFields.has(`${acct.id}-user`);
+                              const revealed = revealedFields.has(`${acct.id}-user`) && canRead;
+                              const hintVal = canRead && isHint(plain);
                               return (
                                 <div>
                                   <label>Username:</label>
-                                  <span className="password-field">
-                                    {revealedFields.has(`${acct.id}-user`) && canRead ? plain : (canRead ? maskValue(plain) : '••••••••')}
-                                    <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-user`, acct.userId)}>
-                                      {revealedFields.has(`${acct.id}-user`) ? <EyeOff size={14} /> : <Eye size={14} />}
-                                    </button>
-                                  </span>
+                                  {revealed && hintVal ? (
+                                    <span className="hint-display">
+                                      <Icons.AlertCircle size={14} className="hint-icon" /><em>{getHintText(plain)}</em>
+                                      <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-user`, acct.userId)}><EyeOff size={14} /></button>
+                                    </span>
+                                  ) : (
+                                    <span className="password-field">
+                                      {revealed ? plain : (canRead ? maskValue(hintVal ? getHintText(plain) : plain) : '••••••••')}
+                                      <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-user`, acct.userId)}>
+                                        {revealed ? <EyeOff size={14} /> : <Eye size={14} />}
+                                      </button>
+                                    </span>
+                                  )}
                                 </div>
                               );
                             })()}
@@ -1001,15 +1060,24 @@ export default function Dashboard() {
                               const plain = getFieldValue(acct.id, 'pass', acct.passwordEncrypted);
                               const isEnc = isEncrypted(acct.passwordEncrypted);
                               const canRead = !isEnc || decryptedFields.has(`${acct.id}-pass`);
+                              const revealed = revealedFields.has(`${acct.id}-pass`) && canRead;
+                              const hintVal = canRead && isHint(plain);
                               return (
                                 <div>
                                   <label>Password:</label>
-                                  <span className="password-field">
-                                    {revealedFields.has(`${acct.id}-pass`) && canRead ? plain : '••••••••'}
-                                    <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-pass`, acct.userId)}>
-                                      {revealedFields.has(`${acct.id}-pass`) ? <EyeOff size={14} /> : <Eye size={14} />}
-                                    </button>
-                                  </span>
+                                  {revealed && hintVal ? (
+                                    <span className="hint-display">
+                                      <Icons.AlertCircle size={14} className="hint-icon" /><em>{getHintText(plain)}</em>
+                                      <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-pass`, acct.userId)}><EyeOff size={14} /></button>
+                                    </span>
+                                  ) : (
+                                    <span className="password-field">
+                                      {revealed ? plain : '••••••••'}
+                                      <button className="btn btn-icon btn-tiny" onClick={() => toggleField(`${acct.id}-pass`, acct.userId)}>
+                                        {revealed ? <EyeOff size={14} /> : <Eye size={14} />}
+                                      </button>
+                                    </span>
+                                  )}
                                 </div>
                               );
                             })()}
@@ -1148,15 +1216,80 @@ export default function Dashboard() {
                 </div>
                 {config.fields.map(field => {
                   const formKey = fieldToFormKey[field.key] as keyof typeof acctForm;
+                  const isSensitive = SENSITIVE_FIELD_KEYS.has(field.key);
+                  const isInHintMode = isSensitive && hintMode[formKey];
+                  const isMenuOpen = openComboMenu === formKey;
                   return (
                     <div className="form-group" key={field.key}>
-                      <label>{field.label}</label>
-                      <input
-                        type={field.type || 'text'}
-                        value={acctForm[formKey]}
-                        onChange={e => setAcctForm(f => ({ ...f, [formKey]: e.target.value }))}
-                        placeholder={field.placeholder}
-                      />
+                      <label>
+                        {field.label}
+                        {isInHintMode && <span className="hint-mode-badge">Hint</span>}
+                      </label>
+                      {isSensitive ? (
+                        <div className="sensitive-combo-field">
+                          <input
+                            type={isInHintMode ? 'text' : (field.type === 'password' && !visiblePasswords[formKey]) ? 'password' : 'text'}
+                            value={acctForm[formKey]}
+                            onChange={e => setAcctForm(f => ({ ...f, [formKey]: e.target.value }))}
+                            placeholder={isInHintMode ? `Hint for ${field.label.toLowerCase()}...` : field.placeholder}
+                            className={isInHintMode ? 'hint-input' : ''}
+                          />
+                          {field.type === 'password' && !isInHintMode && (
+                            <button
+                              type="button"
+                              className="btn btn-icon btn-password-toggle"
+                              onClick={() => setVisiblePasswords(prev => ({ ...prev, [formKey]: !prev[formKey] }))}
+                            >
+                              {visiblePasswords[formKey] ? <EyeOff size={14} /> : <Eye size={14} />}
+                            </button>
+                          )}
+                          <div className="sensitive-combo-toggle">
+                            <button
+                              type="button"
+                              className="btn btn-icon btn-combo-toggle"
+                              onClick={() => setOpenComboMenu(isMenuOpen ? null : formKey)}
+                            >
+                              <Icons.ChevronDown size={14} />
+                            </button>
+                            {isMenuOpen && (
+                              <>
+                                <div className="combo-backdrop" onClick={() => setOpenComboMenu(null)} />
+                                <div className="sensitive-combo-menu open">
+                                  <button
+                                    type="button"
+                                    className={`sensitive-combo-option${!isInHintMode ? ' active' : ''}`}
+                                    onClick={() => { setHintMode(prev => ({ ...prev, [formKey]: false })); setOpenComboMenu(null); }}
+                                  >
+                                    <Icons.Lock size={14} />
+                                    <div>
+                                      <strong>Value</strong>
+                                      <span>Store the actual {field.label.toLowerCase()} (encrypted)</span>
+                                    </div>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={`sensitive-combo-option${isInHintMode ? ' active' : ''}`}
+                                    onClick={() => { setHintMode(prev => ({ ...prev, [formKey]: true })); setOpenComboMenu(null); }}
+                                  >
+                                    <Icons.AlertCircle size={14} />
+                                    <div>
+                                      <strong>Hint</strong>
+                                      <span>Store a hint or reference instead</span>
+                                    </div>
+                                  </button>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <input
+                          type={field.type || 'text'}
+                          value={acctForm[formKey]}
+                          onChange={e => setAcctForm(f => ({ ...f, [formKey]: e.target.value }))}
+                          placeholder={field.placeholder}
+                        />
+                      )}
                     </div>
                   );
                 })}

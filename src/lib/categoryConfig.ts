@@ -46,6 +46,9 @@ export interface FieldConfig {
   placeholder?: string;
 }
 
+/** Set of field keys that hold sensitive information (account numbers, usernames, passwords, etc.) */
+export const SENSITIVE_FIELD_KEYS = new Set(['accountNumber', 'routingNumber', 'username', 'password']);
+
 export const categoryFields: Record<string, { typePlaceholder: string; typeOptions?: string[]; fields: FieldConfig[]; accountLabel?: string; addLabel?: string; nameLabel?: string; institutionLabel?: string; addInstitutionLabel?: string; institutionNameLabel?: string }> = {
   'bank-accounts': {
     typePlaceholder: 'e.g. Checking, Savings, CD, Money Market',

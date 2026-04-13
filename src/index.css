@@ -1110,6 +1110,176 @@ a:hover { text-decoration: underline; }
   font-size: 15px;
 }
 
+/* Hint Display (for viewing stored hints) */
+.hint-display {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+}
+.hint-display .hint-icon {
+  color: #fa8072;
+  flex-shrink: 0;
+}
+[data-theme="light"] .hint-display .hint-icon {
+  color: #e06000;
+}
+.hint-display em {
+  color: #fa8072;
+  font-style: italic;
+}
+[data-theme="light"] .hint-display em {
+  color: #e06000;
+}
+
+/* Hint mode badge on form labels */
+.hint-mode-badge {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #fa807230;
+  color: #fa8072;
+  vertical-align: middle;
+}
+[data-theme="light"] .hint-mode-badge {
+  background: #e0600020;
+  color: #e06000;
+}
+
+/* Sensitive field combo (input + dropdown toggle) */
+.sensitive-combo-field {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+}
+.sensitive-combo-field input {
+  flex: 1;
+  border-top-right-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  border-right: none !important;
+}
+.sensitive-combo-field input.hint-input {
+  border-color: #fa807260;
+  color: #fa8072;
+  font-style: italic;
+}
+[data-theme="light"] .sensitive-combo-field input.hint-input {
+  border-color: #e0600060;
+  color: #e06000;
+}
+/* Password visibility toggle in form (between input and dropdown) */
+.btn-password-toggle {
+  height: auto;
+  border: 1px solid var(--border);
+  border-left: none;
+  border-radius: 0 !important;
+  background: var(--bg-input);
+  color: var(--text-muted);
+  padding: 0 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s;
+}
+.btn-password-toggle:hover {
+  color: var(--text);
+}
+.sensitive-combo-toggle {
+  position: relative;
+}
+/* When a password toggle exists before the combo toggle, remove its left radius */
+.btn-password-toggle + .sensitive-combo-toggle .btn-combo-toggle {
+  border-radius: 0 8px 8px 0 !important;
+}
+.btn-combo-toggle {
+  height: 100%;
+  border: 1px solid var(--border);
+  border-left: none;
+  border-radius: 0 8px 8px 0 !important;
+  background: var(--bg-input);
+  color: var(--text-muted);
+  padding: 0 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: background 0.15s, color 0.15s;
+}
+.btn-combo-toggle:hover {
+  background: var(--bg-card-hover);
+  color: var(--text);
+}
+.combo-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 49;
+}
+.sensitive-combo-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 50;
+  min-width: 260px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+  overflow: hidden;
+  margin-top: 4px;
+}
+.sensitive-combo-menu.open {
+  display: block;
+}
+.sensitive-combo-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+.sensitive-combo-option:hover {
+  background: var(--bg-card-hover);
+}
+.sensitive-combo-option.active {
+  background: var(--primary-alpha-10);
+}
+.sensitive-combo-option > svg {
+  margin-top: 2px;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+.sensitive-combo-option.active > svg {
+  color: var(--primary);
+}
+.sensitive-combo-option div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sensitive-combo-option strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+.sensitive-combo-option span {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.3;
+}
+
 /* Modal */
 .modal-overlay {
   position: fixed;
