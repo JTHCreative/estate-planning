@@ -279,6 +279,7 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
     inviteCode: data.inviteCode || data.partnerCode,
     photoURL: data.photoURL || null,
     pinHash: data.pinHash || null,
+    deletionScheduledAt: data.deletionScheduledAt || null,
   };
 }
 
