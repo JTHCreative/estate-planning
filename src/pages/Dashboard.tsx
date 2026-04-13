@@ -149,6 +149,8 @@ export default function Dashboard() {
   const [openComboMenu, setOpenComboMenu] = useState<string | null>(null);
   // Track which password-type form inputs are showing plaintext
   const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
+  // Account form error message
+  const [acctFormError, setAcctFormError] = useState('');
 
   // Reveal state for masked fields
   const [revealedFields, setRevealedFields] = useState<Set<string>>(new Set());
@@ -450,6 +452,7 @@ export default function Dashboard() {
     setHintMode({});
     setOpenComboMenu(null);
     setVisiblePasswords({});
+    setAcctFormError('');
   };
 
   // Institution CRUD
@@ -572,7 +575,16 @@ export default function Dashboard() {
 
   const handleAddAccount = async (e: React.FormEvent) => {
     e.preventDefault();
-    await performAccountSave();
+    setAcctFormError('');
+    if (!acctForm.accountName.trim()) {
+      setAcctFormError('Account name is required.');
+      return;
+    }
+    try {
+      await performAccountSave();
+    } catch (err) {
+      setAcctFormError(err instanceof Error ? err.message : 'Failed to save account. Please try again.');
+    }
   };
 
   const handleDeleteAccount = async (id: string) => {
@@ -1298,6 +1310,7 @@ export default function Dashboard() {
                 <label>Notes</label>
                 <textarea value={acctForm.notes} onChange={e => setAcctForm(f => ({ ...f, notes: e.target.value }))} />
               </div>
+              {acctFormError && <div className="error-msg">{acctFormError}</div>}
               <div className="form-actions">
                 <button type="button" className="btn btn-ghost" onClick={() => setShowAcctForm(false)}>Cancel</button>
                 <button type="submit" className="btn btn-primary">{editingAcct ? 'Update' : 'Add'} {itemLabelSingular}</button>
