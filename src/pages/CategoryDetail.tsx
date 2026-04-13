@@ -46,6 +46,7 @@ export default function CategoryDetail() {
   const [hintMode, setHintMode] = useState<Record<string, boolean>>({});
   const [openComboMenu, setOpenComboMenu] = useState<string | null>(null);
   const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
+  const [acctFormError, setAcctFormError] = useState('');
 
   const load = useCallback(async () => {
     if (!user || !categoryId) return;
@@ -91,6 +92,7 @@ export default function CategoryDetail() {
     setHintMode({});
     setOpenComboMenu(null);
     setVisiblePasswords({});
+    setAcctFormError('');
   };
 
   const handleAddInstitution = async (e: React.FormEvent) => {
@@ -115,8 +117,14 @@ export default function CategoryDetail() {
 
   const handleAddAccount = async (e: React.FormEvent, institutionId: string) => {
     e.preventDefault();
+    setAcctFormError('');
+    if (!acctForm.accountName.trim()) {
+      setAcctFormError('Account name is required.');
+      return;
+    }
     if (!user) return;
 
+    try {
     // Apply hint prefix for fields in hint mode
     const acctNum = hintMode.accountNumber && acctForm.accountNumber ? `hint:${acctForm.accountNumber}` : (acctForm.accountNumber || null);
     const rtnNum = hintMode.routingNumber && acctForm.routingNumber ? `hint:${acctForm.routingNumber}` : (acctForm.routingNumber || null);
@@ -148,6 +156,9 @@ export default function CategoryDetail() {
     resetAcctForm();
     setShowAcctForm(null);
     await load();
+    } catch (err) {
+      setAcctFormError(err instanceof Error ? err.message : 'Failed to save account. Please try again.');
+    }
   };
 
   const handleDeleteInstitution = async (id: string) => {
@@ -426,6 +437,7 @@ export default function CategoryDetail() {
                                 <label>Notes</label>
                                 <textarea value={acctForm.notes} onChange={e => setAcctForm(f => ({ ...f, notes: e.target.value }))} />
                               </div>
+                              {acctFormError && <div className="error-msg">{acctFormError}</div>}
                               <div className="form-actions">
                                 <button type="button" className="btn btn-ghost" onClick={() => setShowAcctForm(null)}>Cancel</button>
                                 <button type="submit" className="btn btn-primary">{editingAcct ? 'Update' : 'Add'} {itemLabelSingular}</button>

@@ -149,6 +149,8 @@ export default function Dashboard() {
   const [openComboMenu, setOpenComboMenu] = useState<string | null>(null);
   // Track which password-type form inputs are showing plaintext
   const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
+  // Account form error message
+  const [acctFormError, setAcctFormError] = useState('');
 
   // Reveal state for masked fields
   const [revealedFields, setRevealedFields] = useState<Set<string>>(new Set());
@@ -450,6 +452,7 @@ export default function Dashboard() {
     setHintMode({});
     setOpenComboMenu(null);
     setVisiblePasswords({});
+    setAcctFormError('');
   };
 
   // Institution CRUD
@@ -507,32 +510,12 @@ export default function Dashboard() {
     if (hintMode.username && username) username = `hint:${username}`;
     if (hintMode.password && password) password = `hint:${password}`;
 
-    // Encrypt ALL sensitive fields (including hints)
-    const hasSensitiveData = !!(acctNum || rtnNum || username || password);
-
-    if (hasSensitiveData) {
-      if (!user.hasPin) {
-        savePendingAccountRef.current = () => { performAccountSave(); };
-        setPinPromptUserId(user.id);
-        setPinPromptFieldKey(null);
-        setPinPromptForSave(true);
-        setPinPromptIsSetup(true);
-        setPinInput('');
-        setPinConfirmInput('');
-        setPinPromptError('');
-        return;
-      }
-      const key = userKeysRef.current.get(user.id);
-      if (!key) {
-        savePendingAccountRef.current = () => { performAccountSave(); };
-        setPinPromptUserId(user.id);
-        setPinPromptFieldKey(null);
-        setPinPromptForSave(true);
-        setPinPromptIsSetup(false);
-        setPinInput('');
-        setPinPromptError('');
-        return;
-      }
+    // If the user's encryption key is already cached (PIN was entered this session),
+    // silently encrypt sensitive fields. Otherwise save as plaintext — the owner
+    // shouldn't be prompted for a PIN just to save their own new data. PIN is only
+    // required when viewing or editing *existing* encrypted fields.
+    const key = userKeysRef.current.get(user.id);
+    if (key) {
       if (acctNum) acctNum = await encryptWithKey(acctNum, key);
       if (rtnNum) rtnNum = await encryptWithKey(rtnNum, key);
       if (username) username = await encryptWithKey(username, key);
@@ -572,7 +555,16 @@ export default function Dashboard() {
 
   const handleAddAccount = async (e: React.FormEvent) => {
     e.preventDefault();
-    await performAccountSave();
+    setAcctFormError('');
+    if (!acctForm.accountName.trim()) {
+      setAcctFormError('Account name is required.');
+      return;
+    }
+    try {
+      await performAccountSave();
+    } catch (err) {
+      setAcctFormError(err instanceof Error ? err.message : 'Failed to save account. Please try again.');
+    }
   };
 
   const handleDeleteAccount = async (id: string) => {
@@ -1298,6 +1290,7 @@ export default function Dashboard() {
                 <label>Notes</label>
                 <textarea value={acctForm.notes} onChange={e => setAcctForm(f => ({ ...f, notes: e.target.value }))} />
               </div>
+              {acctFormError && <div className="error-msg">{acctFormError}</div>}
               <div className="form-actions">
                 <button type="button" className="btn btn-ghost" onClick={() => setShowAcctForm(false)}>Cancel</button>
                 <button type="submit" className="btn btn-primary">{editingAcct ? 'Update' : 'Add'} {itemLabelSingular}</button>
@@ -1321,7 +1314,7 @@ export default function Dashboard() {
           savePendingAccountRef.current = null;
         };
         return (
-          <div className="modal-overlay" onClick={closePrompt}>
+          <div className="modal-overlay" style={{ zIndex: 110 }} onClick={closePrompt}>
             <div className="modal pin-modal" onClick={e => e.stopPropagation()}>
               <div className="modal-header">
                 <h3><Icons.Lock size={18} /> {pinPromptIsSetup ? 'Set a PIN' : 'Enter PIN'}</h3>
