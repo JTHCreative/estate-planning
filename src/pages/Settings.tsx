@@ -442,31 +442,31 @@ export default function Settings() {
           {pinMessage && <div className="success-msg">{pinMessage}</div>}
           {pinError && <div className="error-msg">{pinError}</div>}
         </div>
-      </div>
 
-      <div className="settings-subsection delete-account-section">
-        <h4><Trash2 size={14} /> Delete Account</h4>
-        {user?.deletionScheduledAt ? (
-          <div className="deletion-scheduled-banner">
-            <AlertTriangle size={18} />
-            <div>
-              <strong>Account scheduled for deletion</strong>
-              <span>Your account and all data will be permanently deleted in {user.deletionDaysLeft} day{user.deletionDaysLeft !== 1 ? 's' : ''}.</span>
+        <div className="settings-subsection delete-account-section">
+          <h4><Trash2 size={14} /> Delete Account</h4>
+          {user?.deletionScheduledAt ? (
+            <div className="deletion-scheduled-banner">
+              <AlertTriangle size={18} />
+              <div>
+                <strong>Account scheduled for deletion</strong>
+                <span>Your account and all data will be permanently deleted in {user.deletionDaysLeft} day{user.deletionDaysLeft !== 1 ? 's' : ''}.</span>
+              </div>
+              <button className="btn btn-sm btn-primary" onClick={handleCancelDeletion}>
+                Cancel Deletion
+              </button>
             </div>
-            <button className="btn btn-sm btn-primary" onClick={handleCancelDeletion}>
-              Cancel Deletion
-            </button>
-          </div>
-        ) : (
-          <>
-            <p className="section-desc">
-              Permanently delete your account and all associated data. This action is irreversible after the waiting period.
-            </p>
-            <button className="btn btn-danger" onClick={() => { setShowDeleteModal(true); setDeleteError(''); setDeletePassword(''); setDeleteConfirmText(''); }}>
-              <Trash2 size={16} /> Delete Account
-            </button>
-          </>
-        )}
+          ) : (
+            <>
+              <p className="section-desc">
+                Permanently delete your account and all associated data. This action is irreversible after the waiting period.
+              </p>
+              <button className="btn btn-danger" onClick={() => { setShowDeleteModal(true); setDeleteError(''); setDeletePassword(''); setDeleteConfirmText(''); }}>
+                <Trash2 size={16} /> Delete Account
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Delete Account Confirmation Modal */}
