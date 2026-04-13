@@ -12,6 +12,7 @@ import {
   SENSITIVE_FIELD_KEYS,
   Plus, Trash2, Edit3, Eye, EyeOff, X, MoreHorizontal,
   DollarSign, ShieldCheck, Home, Briefcase, Globe, Zap, Heart,
+  type LucideIcon,
 } from '../lib/categoryConfig';
 import * as Icons from 'lucide-react';
 
@@ -20,7 +21,7 @@ type AccountWithOwner = Account & { ownerName: string };
 
 interface RootCategory {
   name: string;
-  icon: any;
+  icon: LucideIcon;
   categoryIds: string[];
 }
 
@@ -34,7 +35,7 @@ const rootCategories: RootCategory[] = [
   { name: 'People & Wishes', icon: Heart, categoryIds: ['emergency-contacts', 'final-wishes'] },
 ];
 
-const iconMap: Record<string, any> = {
+const iconMap: Record<string, LucideIcon> = {
   'landmark': Icons.Landmark,
   'trending-up': Icons.TrendingUp,
   'piggy-bank': Icons.PiggyBank,

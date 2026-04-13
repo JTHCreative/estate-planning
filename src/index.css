@@ -1189,7 +1189,7 @@ a:hover { text-decoration: underline; }
   transition: background 0.15s, color 0.15s;
 }
 .btn-combo-toggle:hover {
-  background: var(--bg-hover);
+  background: var(--bg-card-hover);
   color: var(--text);
 }
 .combo-backdrop {
@@ -1231,10 +1231,10 @@ a:hover { text-decoration: underline; }
   transition: background 0.15s;
 }
 .sensitive-combo-option:hover {
-  background: var(--bg-hover);
+  background: var(--bg-card-hover);
 }
 .sensitive-combo-option.active {
-  background: var(--primary-alpha, rgba(232, 120, 94, 0.1));
+  background: var(--primary-alpha-10);
 }
 .sensitive-combo-option > svg {
   margin-top: 2px;

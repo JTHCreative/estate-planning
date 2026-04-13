@@ -44,7 +44,6 @@ export interface FieldConfig {
   label: string;
   type?: string;
   placeholder?: string;
-  sensitive?: boolean;
 }
 
 /** Set of field keys that hold sensitive information (account numbers, usernames, passwords, etc.) */
