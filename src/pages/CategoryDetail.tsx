@@ -45,6 +45,7 @@ export default function CategoryDetail() {
   });
   const [hintMode, setHintMode] = useState<Record<string, boolean>>({});
   const [openComboMenu, setOpenComboMenu] = useState<string | null>(null);
+  const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
 
   const load = useCallback(async () => {
     if (!user || !categoryId) return;
@@ -89,6 +90,7 @@ export default function CategoryDetail() {
     });
     setHintMode({});
     setOpenComboMenu(null);
+    setVisiblePasswords({});
   };
 
   const handleAddInstitution = async (e: React.FormEvent) => {
@@ -352,12 +354,21 @@ export default function CategoryDetail() {
                                           {isSensitive ? (
                                             <div className="sensitive-combo-field">
                                               <input
-                                                type={isInHintMode ? 'text' : (field.type || 'text')}
+                                                type={isInHintMode ? 'text' : (field.type === 'password' && !visiblePasswords[formKey]) ? 'password' : 'text'}
                                                 value={acctForm[formKey]}
                                                 onChange={e => setAcctForm(f => ({ ...f, [formKey]: e.target.value }))}
                                                 placeholder={isInHintMode ? `Hint for ${field.label.toLowerCase()}...` : field.placeholder}
                                                 className={isInHintMode ? 'hint-input' : ''}
                                               />
+                                              {field.type === 'password' && !isInHintMode && (
+                                                <button
+                                                  type="button"
+                                                  className="btn btn-icon btn-password-toggle"
+                                                  onClick={() => setVisiblePasswords(prev => ({ ...prev, [formKey]: !prev[formKey] }))}
+                                                >
+                                                  {visiblePasswords[formKey] ? <EyeOff size={14} /> : <Eye size={14} />}
+                                                </button>
+                                              )}
                                               <div className="sensitive-combo-toggle">
                                                 <button
                                                   type="button"

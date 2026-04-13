@@ -147,6 +147,8 @@ export default function Dashboard() {
   const [hintMode, setHintMode] = useState<Record<string, boolean>>({});
   // Track which combo dropdown menu is currently open (null = none)
   const [openComboMenu, setOpenComboMenu] = useState<string | null>(null);
+  // Track which password-type form inputs are showing plaintext
+  const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
 
   // Reveal state for masked fields
   const [revealedFields, setRevealedFields] = useState<Set<string>>(new Set());
@@ -447,6 +449,7 @@ export default function Dashboard() {
     });
     setHintMode({});
     setOpenComboMenu(null);
+    setVisiblePasswords({});
   };
 
   // Institution CRUD
@@ -1225,12 +1228,21 @@ export default function Dashboard() {
                       {isSensitive ? (
                         <div className="sensitive-combo-field">
                           <input
-                            type={isInHintMode ? 'text' : (field.type || 'text')}
+                            type={isInHintMode ? 'text' : (field.type === 'password' && !visiblePasswords[formKey]) ? 'password' : 'text'}
                             value={acctForm[formKey]}
                             onChange={e => setAcctForm(f => ({ ...f, [formKey]: e.target.value }))}
                             placeholder={isInHintMode ? `Hint for ${field.label.toLowerCase()}...` : field.placeholder}
                             className={isInHintMode ? 'hint-input' : ''}
                           />
+                          {field.type === 'password' && !isInHintMode && (
+                            <button
+                              type="button"
+                              className="btn btn-icon btn-password-toggle"
+                              onClick={() => setVisiblePasswords(prev => ({ ...prev, [formKey]: !prev[formKey] }))}
+                            >
+                              {visiblePasswords[formKey] ? <EyeOff size={14} /> : <Eye size={14} />}
+                            </button>
+                          )}
                           <div className="sensitive-combo-toggle">
                             <button
                               type="button"

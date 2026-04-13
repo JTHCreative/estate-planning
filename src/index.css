@@ -1172,8 +1172,29 @@ a:hover { text-decoration: underline; }
   border-color: #e0600060;
   color: #e06000;
 }
+/* Password visibility toggle in form (between input and dropdown) */
+.btn-password-toggle {
+  height: auto;
+  border: 1px solid var(--border);
+  border-left: none;
+  border-radius: 0 !important;
+  background: var(--bg-input);
+  color: var(--text-muted);
+  padding: 0 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s;
+}
+.btn-password-toggle:hover {
+  color: var(--text);
+}
 .sensitive-combo-toggle {
   position: relative;
+}
+/* When a password toggle exists before the combo toggle, remove its left radius */
+.btn-password-toggle + .sensitive-combo-toggle .btn-combo-toggle {
+  border-radius: 0 8px 8px 0 !important;
 }
 .btn-combo-toggle {
   height: 100%;
