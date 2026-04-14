@@ -9,7 +9,7 @@ import {
 import type { Institution, Account } from '../lib/storage';
 import {
   categoryFields, defaultFields, institutionPresets, presetIcons, fieldToFormKey,
-  SENSITIVE_FIELD_KEYS, CURRENCIES, DEFAULT_CURRENCY, getCurrencySymbol, NON_MONETARY_VALUE_CATEGORIES,
+  SENSITIVE_FIELD_KEYS, CURRENCIES, DEFAULT_CURRENCY, getCurrencySymbol, NON_MONETARY_VALUE_CATEGORIES, formatMonetary, unformatMonetary,
   Plus, Trash2, Edit3, Eye, EyeOff, X, MoreHorizontal,
   DollarSign, ShieldCheck, Home, Briefcase, Globe, Zap, Heart,
   type LucideIcon,
@@ -1117,7 +1117,7 @@ export default function Dashboard() {
                               );
                             })()}
                             {acct.url && <div><label>URL:</label> <a href={acct.url.startsWith('http') ? acct.url : `https://${acct.url}`} target="_blank" rel="noreferrer">{acct.url}</a></div>}
-                            {acct.estimatedValue && <div><label>Value:</label> <span><span className="currency-symbol">{getCurrencySymbol(acct.currency)}</span>{acct.estimatedValue}</span></div>}
+                            {acct.estimatedValue && <div><label>Value:</label> <span><span className="currency-symbol">{getCurrencySymbol(acct.currency)}</span>{formatMonetary(acct.estimatedValue)}</span></div>}
                             {acct.beneficiary && <div><label>Beneficiary:</label> <span>{acct.beneficiary}</span></div>}
                             {acct.contactName && <div><label>Contact:</label> <span>{acct.contactName} {acct.contactPhone ? `· ${acct.contactPhone}` : ''} {acct.contactEmail ? `· ${acct.contactEmail}` : ''}</span></div>}
                             {acct.notes && <div><label>Notes:</label> <span>{acct.notes}</span></div>}
@@ -1351,8 +1351,8 @@ export default function Dashboard() {
                           </div>
                           <input
                             type="text"
-                            value={acctForm[formKey]}
-                            onChange={e => setAcctForm(f => ({ ...f, [formKey]: e.target.value }))}
+                            value={formatMonetary(acctForm[formKey])}
+                            onChange={e => setAcctForm(f => ({ ...f, [formKey]: unformatMonetary(e.target.value) }))}
                             placeholder={field.placeholder}
                           />
                         </div>
