@@ -78,6 +78,22 @@ export function getCurrencySymbol(code: string | null | undefined): string {
 /** Set of category IDs where estimatedValue is NOT a monetary field */
 export const NON_MONETARY_VALUE_CATEGORIES = new Set(['estate-documents']);
 
+/** Format a numeric string with commas (e.g. "1000" → "1,000"). Preserves decimals and non-numeric prefixes/suffixes. */
+export function formatMonetary(value: string): string {
+  // Strip existing commas so we can reformat
+  const stripped = value.replace(/,/g, '');
+  // Split on decimal point
+  const parts = stripped.split('.');
+  // Format the integer part with commas
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return parts.join('.');
+}
+
+/** Remove commas from a formatted monetary string for storage */
+export function unformatMonetary(value: string): string {
+  return value.replace(/,/g, '');
+}
+
 export const categoryFields: Record<string, { typePlaceholder: string; typeOptions?: string[]; fields: FieldConfig[]; accountLabel?: string; addLabel?: string; nameLabel?: string; institutionLabel?: string; addInstitutionLabel?: string; institutionNameLabel?: string }> = {
   'bank-accounts': {
     typePlaceholder: 'e.g. Checking, Savings, CD, Money Market',

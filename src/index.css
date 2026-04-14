@@ -155,27 +155,88 @@ a:hover { text-decoration: underline; }
 
 .custom-type-input input { flex: 1; }
 
-/* Currency field (dropdown + value input) */
-.currency-field {
+/* Currency combo field (themed dropdown + value input) */
+.currency-combo-field {
   display: flex;
   align-items: stretch;
 }
-.currency-select {
-  width: auto !important;
-  min-width: 0;
-  flex-shrink: 0;
-  border-top-right-radius: 0 !important;
-  border-bottom-right-radius: 0 !important;
-  border-right: none !important;
-  padding: 10px 8px !important;
-  font-size: 13px !important;
-  color: var(--text-muted);
-  background: var(--bg-input);
-}
-.currency-field input {
+.currency-combo-field input {
   flex: 1;
   border-top-left-radius: 0 !important;
   border-bottom-left-radius: 0 !important;
+}
+.currency-combo-toggle {
+  position: relative;
+}
+.btn-currency-toggle {
+  height: 100%;
+  border: 1px solid var(--border);
+  border-right: none;
+  border-radius: 8px 0 0 8px !important;
+  background: var(--bg-input);
+  color: var(--text);
+  padding: 0 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+  font-size: 14px;
+}
+.btn-currency-toggle:hover {
+  background: var(--bg-card-hover);
+}
+.currency-toggle-label {
+  font-weight: 600;
+  color: var(--primary);
+}
+.currency-combo-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 50;
+  min-width: 220px;
+  max-height: 260px;
+  overflow-y: auto;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+  margin-top: 4px;
+}
+.currency-combo-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 14px;
+  border: none;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+  font-size: 13px;
+}
+.currency-combo-option:hover {
+  background: var(--bg-card-hover);
+}
+.currency-combo-option.active {
+  background: var(--primary-alpha-10);
+}
+.currency-option-symbol {
+  font-weight: 700;
+  min-width: 24px;
+  color: var(--primary);
+}
+.currency-option-code {
+  font-weight: 600;
+  min-width: 36px;
+}
+.currency-option-name {
+  color: var(--text-muted);
+  font-size: 12px;
 }
 .currency-symbol {
   font-weight: 600;
@@ -1007,7 +1068,7 @@ a:hover { text-decoration: underline; }
 
 .category-tile:hover .category-tile-icon { color: var(--primary); }
 .category-tile.has-data .category-tile-icon { color: var(--primary); }
-.category-tile.selected .category-tile-icon { color: var(--primary); }
+.category-tile.selected .category-tile-icon { color: #f5e8e0; }
 
 .category-tile-name {
   font-size: 13px;
