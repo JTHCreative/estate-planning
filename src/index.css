@@ -1068,7 +1068,7 @@ a:hover { text-decoration: underline; }
 
 .category-tile:hover .category-tile-icon { color: var(--primary); }
 .category-tile.has-data .category-tile-icon { color: var(--primary); }
-.category-tile.selected .category-tile-icon { color: var(--primary); }
+.category-tile.selected .category-tile-icon { color: #f5e8e0; }
 
 .category-tile-name {
   font-size: 13px;
