@@ -602,6 +602,15 @@ a:hover { text-decoration: underline; }
 
 .btn-filter:hover { border-color: var(--primary); }
 
+.btn-unlocked {
+  border-color: var(--success);
+  color: var(--success);
+}
+.btn-unlocked:hover {
+  background: var(--success-alpha-10);
+  border-color: var(--success);
+}
+
 .filter-badge {
   background: var(--primary);
   color: #fff;
