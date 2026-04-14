@@ -151,6 +151,8 @@ export default function Dashboard() {
   const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
   // Currency dropdown open state
   const [showCurrencyMenu, setShowCurrencyMenu] = useState(false);
+  // Lock confirmation modal
+  const [showLockConfirm, setShowLockConfirm] = useState(false);
   // Account form error message
   const [acctFormError, setAcctFormError] = useState('');
 
@@ -734,20 +736,6 @@ export default function Dashboard() {
             </>
           )}
         </div>
-        {unlockedUsers.size > 0 && (
-          <button
-            className="btn btn-filter btn-unlocked"
-            onClick={() => {
-              userKeysRef.current.clear();
-              setUnlockedUsers(new Set());
-              setDecryptedFields(new Map());
-              setRevealedFields(new Set());
-            }}
-          >
-            <Icons.LockOpen size={16} />
-            Unlocked
-          </button>
-        )}
         <div className="filter-wrapper">
           <button className="btn btn-filter" onClick={() => setShowFilterDropdown(!showFilterDropdown)}>
             <Icons.Filter size={16} />
@@ -838,6 +826,16 @@ export default function Dashboard() {
             </>
           )}
         </div>
+        {unlockedUsers.size > 0 ? (
+          <button className="btn btn-filter btn-lock-status btn-unlocked" onClick={() => setShowLockConfirm(true)}>
+            <Icons.LockOpen size={16} />
+            Unlocked
+          </button>
+        ) : (
+          <button className="btn btn-filter btn-lock-status btn-locked" disabled>
+            <Icons.Lock size={16} />
+          </button>
+        )}
         </div>
       </div>
 
@@ -1392,6 +1390,37 @@ export default function Dashboard() {
                 <button type="submit" className="btn btn-primary">{editingAcct ? 'Update' : 'Add'} {itemLabelSingular}</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Lock Confirmation Modal */}
+      {showLockConfirm && (
+        <div className="modal-overlay" onClick={() => setShowLockConfirm(false)}>
+          <div className="modal pin-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3><Icons.Lock size={18} /> Lock Sensitive Fields</h3>
+              <button className="btn btn-ghost" onClick={() => setShowLockConfirm(false)}><X size={18} /></button>
+            </div>
+            <p className="section-desc">
+              This will hide all sensitive information and clear your cached PIN. You'll need to enter your PIN again to view or edit encrypted fields.
+            </p>
+            <div className="form-actions">
+              <button type="button" className="btn btn-ghost" onClick={() => setShowLockConfirm(false)}>Cancel</button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => {
+                  userKeysRef.current.clear();
+                  setUnlockedUsers(new Set());
+                  setDecryptedFields(new Map());
+                  setRevealedFields(new Set());
+                  setShowLockConfirm(false);
+                }}
+              >
+                <Icons.Lock size={14} /> Lock Now
+              </button>
+            </div>
           </div>
         </div>
       )}
