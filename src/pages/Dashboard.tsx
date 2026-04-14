@@ -734,6 +734,20 @@ export default function Dashboard() {
             </>
           )}
         </div>
+        {unlockedUsers.size > 0 && (
+          <button
+            className="btn btn-filter btn-unlocked"
+            onClick={() => {
+              userKeysRef.current.clear();
+              setUnlockedUsers(new Set());
+              setDecryptedFields(new Map());
+              setRevealedFields(new Set());
+            }}
+          >
+            <Icons.LockOpen size={16} />
+            Unlocked
+          </button>
+        )}
         <div className="filter-wrapper">
           <button className="btn btn-filter" onClick={() => setShowFilterDropdown(!showFilterDropdown)}>
             <Icons.Filter size={16} />
