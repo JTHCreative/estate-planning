@@ -602,9 +602,22 @@ a:hover { text-decoration: underline; }
 
 .btn-filter:hover { border-color: var(--primary); }
 
+.btn-lock-status {
+  padding: 9px 12px;
+}
+.btn-locked {
+  border-color: var(--primary);
+  color: var(--primary);
+  opacity: 0.7;
+  cursor: default;
+}
+.btn-locked:hover {
+  border-color: var(--primary);
+}
 .btn-unlocked {
   border-color: var(--success);
   color: var(--success);
+  cursor: pointer;
 }
 .btn-unlocked:hover {
   background: var(--success-alpha-10);
