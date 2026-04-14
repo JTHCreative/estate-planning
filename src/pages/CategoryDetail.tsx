@@ -46,6 +46,7 @@ export default function CategoryDetail() {
   const [hintMode, setHintMode] = useState<Record<string, boolean>>({});
   const [openComboMenu, setOpenComboMenu] = useState<string | null>(null);
   const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
+  const [showCurrencyMenu, setShowCurrencyMenu] = useState(false);
   const [acctFormError, setAcctFormError] = useState('');
 
   const load = useCallback(async () => {
@@ -92,6 +93,7 @@ export default function CategoryDetail() {
     setHintMode({});
     setOpenComboMenu(null);
     setVisiblePasswords({});
+    setShowCurrencyMenu(false);
     setAcctFormError('');
   };
 
@@ -421,16 +423,36 @@ export default function CategoryDetail() {
                                               </div>
                                             </div>
                                           ) : isMonetary ? (
-                                            <div className="currency-field">
-                                              <select
-                                                className="currency-select"
-                                                value={acctForm.currency}
-                                                onChange={e => setAcctForm(f => ({ ...f, currency: e.target.value }))}
-                                              >
-                                                {CURRENCIES.map(c => (
-                                                  <option key={c.code} value={c.code}>{c.code} ({c.symbol})</option>
-                                                ))}
-                                              </select>
+                                            <div className="currency-combo-field">
+                                              <div className="currency-combo-toggle">
+                                                <button
+                                                  type="button"
+                                                  className="btn btn-icon btn-currency-toggle"
+                                                  onClick={() => setShowCurrencyMenu(!showCurrencyMenu)}
+                                                >
+                                                  <span className="currency-toggle-label">{getCurrencySymbol(acctForm.currency)}</span>
+                                                  <ChevronDown size={12} />
+                                                </button>
+                                                {showCurrencyMenu && (
+                                                  <>
+                                                    <div className="combo-backdrop" onClick={() => setShowCurrencyMenu(false)} />
+                                                    <div className="currency-combo-menu">
+                                                      {CURRENCIES.map(c => (
+                                                        <button
+                                                          key={c.code}
+                                                          type="button"
+                                                          className={`currency-combo-option${acctForm.currency === c.code ? ' active' : ''}`}
+                                                          onClick={() => { setAcctForm(f => ({ ...f, currency: c.code })); setShowCurrencyMenu(false); }}
+                                                        >
+                                                          <span className="currency-option-symbol">{c.symbol}</span>
+                                                          <span className="currency-option-code">{c.code}</span>
+                                                          <span className="currency-option-name">{c.name}</span>
+                                                        </button>
+                                                      ))}
+                                                    </div>
+                                                  </>
+                                                )}
+                                              </div>
                                               <input
                                                 type="text"
                                                 value={acctForm[formKey]}
